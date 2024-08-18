@@ -2,7 +2,7 @@ Binaries
 DerivedDataCache
 Intermediate
 Saved
-Build
+/Build/
 .vscode
 .vs
 *.VC.db

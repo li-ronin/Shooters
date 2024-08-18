@@ -1,6 +1,8 @@
-
-#include "Components/SphereComponent.h"
 #include "WeaponBase.h"
+#include "Components/SphereComponent.h"
+#include "Components/WidgetComponent.h"
+#include "../Character/BlasterCharacter.h"
+#include "Net/UnrealNetwork.h"
 
 AWeaponBase::AWeaponBase()
 {
@@ -20,24 +22,88 @@ AWeaponBase::AWeaponBase()
 	// 这种重叠事件应该放在服务器上检测，所以客户端本地我们忽略碰撞
 	AreaSphere->SetCollisionResponseToAllChannels(ECR_Ignore);
 	AreaSphere->SetCollisionEnabled(ECollisionEnabled::NoCollision);	// 我们想在服务器上启用AreaSphere的碰撞，在BeginPlay中这么做
-}
 
+	PickupWidget = CreateDefaultSubobject<UWidgetComponent>("PickupWidget");
+	PickupWidget->SetupAttachment(RootComponent);
+}
 
 void AWeaponBase::BeginPlay()
 {
 	Super::BeginPlay();
-	
+	if(PickupWidget){
+		PickupWidget->SetVisibility(false);
+	}
 	if(HasAuthority())	// 若当前为服务器 GetLocalRole() == ROLE_Authority
 	{
 		AreaSphere->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 		AreaSphere->SetCollisionResponseToChannel(ECC_Pawn,ECR_Overlap);
+		AreaSphere->OnComponentBeginOverlap.AddDynamic(this, &ThisClass::OnSphereOverlap);
+		AreaSphere->OnComponentEndOverlap.AddDynamic(this, &ThisClass::OnSphereEndOverlap);
 	}
 }
 
+void AWeaponBase::OnSphereOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
+	UPrimitiveComponent* OtherComponent, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+{
+	ABlasterCharacter* OurCharacter = Cast<ABlasterCharacter>(OtherActor);
+	if(OurCharacter)
+	{
+		OurCharacter->SetOverlapWeapon(this);
+	}
+}
+
+void AWeaponBase::OnSphereEndOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
+	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
+{
+	ABlasterCharacter* OurCharacter = Cast<ABlasterCharacter>(OtherActor);
+	if(OurCharacter)
+	{
+		OurCharacter->SetOverlapWeapon(nullptr);
+	}
+}
+
+void AWeaponBase::OnRep_WeaponState() // 客户端执行
+{
+	switch (WeaponState)
+	{
+		case EWeaponState::EWS_Equipped:
+			ShowPickupWidget(false);
+			AreaSphere->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+			break;
+	}
+	
+}
+
+void AWeaponBase::SetWeaponState(EWeaponState state)
+{
+	WeaponState = state;
+	switch (WeaponState)
+	{
+	case EWeaponState::EWS_Equipped:
+		ShowPickupWidget(false);
+		AreaSphere->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		break;
+	}
+	
+}
 
 void AWeaponBase::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+	
+}
 
+void AWeaponBase::ShowPickupWidget(bool bShowWidget)
+{
+	if(PickupWidget)
+	{
+		PickupWidget->SetVisibility(bShowWidget);
+	}
+}
+
+void AWeaponBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	DOREPLIFETIME(AWeaponBase, WeaponState);
 }
 

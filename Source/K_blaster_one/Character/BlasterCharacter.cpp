@@ -1,9 +1,14 @@
 #include "BlasterCharacter.h"
 
+#include "VectorUtil.h"
 #include "Camera/CameraComponent.h"
+#include "Components/CapsuleComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/SpringArmComponent.h"
-
+#include "K_blaster_one/Components/CombatComponent.h"
+#include "K_blaster_one/Weapon/WeaponBase.h"
+#include "Net/UnrealNetwork.h"
+#include "Kismet/KismetMathLibrary.h"
 
 ABlasterCharacter::ABlasterCharacter()
 {
@@ -20,16 +25,48 @@ ABlasterCharacter::ABlasterCharacter()
 
 	bUseControllerRotationYaw = false;
 	GetCharacterMovement()->bOrientRotationToMovement = true;	// 让角色朝向移动方向，而不是镜头旋转方向
+
+	// Combat组件，可装备武器
+	Combat = CreateDefaultSubobject<UCombatComponent>(TEXT("CombatComponent"));	
+	Combat->SetIsReplicated(true);	  // 指定战斗组件为复制组件，复制Component不需要注册
+
+	GetCharacterMovement()->NavAgentProps.bCanCrouch = true;
+
+	GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);
+	GetMesh()->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);
+
+	TurningState = ETurningInPlace::ETIP_NotTurning;
+
+	// 网络更新频率
+	/** How often (per second) this actor will be considered for replication, used to determine NetUpdateTime */
+	NetUpdateFrequency = 66.f;
+	MinNetUpdateFrequency = 33.f;
+	// Server Net Tick Rate在配置文件里面设置
+	
 }
 
-// Called when the game starts or when spawned
+void ABlasterCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	
+	// 注册重叠武器的变量以复制,只有在拥有此角色的客户端上（也就是Remote=ROLE_AutonomousProxy）显示Widget才有意义，无需复制到所有客户端上。
+	// DOREPLIFETIME(ABlasterCharacter, OverlappingWeapon);
+	DOREPLIFETIME_CONDITION(ABlasterCharacter, OverlappingWeapon, COND_OwnerOnly);
+}
+
 void ABlasterCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 	
 }
 
-// Called to bind functionality to input
+void ABlasterCharacter::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+
+	AimOffset(DeltaTime);
+}
+
 void ABlasterCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
@@ -40,6 +77,20 @@ void ABlasterCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 	PlayerInputComponent->BindAxis("MoveRight", this, &ThisClass::MoveRight);
 	PlayerInputComponent->BindAxis("Turn", this, &ThisClass::Turn);
 	PlayerInputComponent->BindAxis("LookUp", this, &ThisClass::LookUp);
+	
+	PlayerInputComponent->BindAction("Equip", IE_Pressed, this, &ThisClass::EquipButtonPressed);
+	PlayerInputComponent->BindAction("Crouch", IE_Pressed, this, &ThisClass::CrouchButtonPressed);
+	PlayerInputComponent->BindAction("Aim", IE_Pressed, this, &ThisClass::AimButtonPressed);
+	PlayerInputComponent->BindAction("Aim", IE_Released, this, &ThisClass::AimButtonReleased);
+}
+
+void ABlasterCharacter::PostInitializeComponents()
+{
+	Super::PostInitializeComponents();
+	if(Combat)
+	{
+		Combat->Character = this;
+	}
 }
 
 void ABlasterCharacter::MoveForward(float Value)
@@ -75,12 +126,169 @@ void ABlasterCharacter::LookUp(float Value)
 	AddControllerPitchInput(Value);
 }
 
-// Called every frame
-void ABlasterCharacter::Tick(float DeltaTime)
+void ABlasterCharacter::EquipButtonPressed()
 {
-	Super::Tick(DeltaTime);
-
+	if(Combat)	// 仅在服务器上进行装备武器
+	{
+		if(GetLocalRole() == ROLE_Authority)
+		{
+			Combat->EquipWeapon(OverlappingWeapon);	
+		}else
+		{
+			ServerEquipButtonPressed();
+		}
+	}
 }
+
+void ABlasterCharacter::CrouchButtonPressed()
+{
+	if(bIsCrouched)
+	{
+		UnCrouch();
+	}else
+	{
+		Crouch();
+	}
+	
+}
+
+void ABlasterCharacter::AimButtonPressed()
+{
+	if(Combat)
+	{
+		Combat->SetAmingState(true); 
+	}
+}
+
+void ABlasterCharacter::AimButtonReleased()
+{
+	if(Combat)
+	{
+		Combat->SetAmingState(false); 
+	}
+}
+
+void ABlasterCharacter::AimOffset(float DeltaTime)
+{
+	if(Combat && !Combat->EquippedWeapon)return; 
+	FVector Velocity = GetVelocity();
+	Velocity.Z = 0.f;
+	float Speed = Velocity.Size(); // 模长Sqrt(X*X + Y*Y + Z*Z);
+	bool bIsInAir = GetCharacterMovement()->IsFalling();
+	if(FMath::Abs(Speed) <= 1e-6 && !bIsInAir)	// 站着不动，并且没有跳跃
+	{
+		// 让角色朝向移动方向，而不是镜头旋转方向
+		bUseControllerRotationYaw = true;
+		FRotator CurrAimRotation = FRotator(0.f, GetBaseAimRotation().Yaw, 0.f); 
+		AimOffset_Yaw = UKismetMathLibrary::NormalizedDeltaRotator(CurrAimRotation, StartingAimRotation).Yaw;
+		if(TurningState == ETurningInPlace::ETIP_NotTurning){
+			Last_Yaw = AimOffset_Yaw;
+		}
+		SetTurnInPlace(DeltaTime);
+	}else
+	{
+		// 让角色朝向镜头旋转方向, 而不是移动方向
+		bUseControllerRotationYaw = true;
+		StartingAimRotation = FRotator(0.f, GetBaseAimRotation().Yaw, 0.f);
+		AimOffset_Yaw = 0.f;
+		TurningState = ETurningInPlace::ETIP_NotTurning;
+	}
+	// [90, 0] [0, -90]
+	// [90, 0] [360, 270]
+	// 在客户端向服务端发RPC的时候，CharacterMovmentComponent将旋转压缩至5Bytes
+	// 压缩的时候将Yaw和Pitch [0, 360)-->[0, 65536)
+	// 注意都是正数，所以当负数映射的时候，由于做了Mask会切断不在[0, 360)范围内的数
+	// 当在服务端对客户端的角度进行解压缩的时候[0, 65536)-->[0, 360)，这就是[0, -90]的角度变成了[360, 270]的原因
+	AimOffset_Pitch = GetBaseAimRotation().Pitch;
+	
+	if(AimOffset_Pitch > 90.f && !IsLocallyControlled())
+	{
+		// map pithc from [270, 360) to [-90, 0)
+		FVector2d InRange(270.f, 360.f);
+		FVector2d OutRange(-90.f, 0.f);
+		AimOffset_Pitch = FMath::GetMappedRangeValueClamped(InRange, OutRange, AimOffset_Pitch);
+		
+	}
+}
+
+void ABlasterCharacter::SetTurnInPlace(float DeltaTime)
+{
+	if(AimOffset_Yaw > 90.f)
+	{
+		TurningState = ETurningInPlace::ETIP_Right;
+	}else if(AimOffset_Yaw < -90.f)
+	{
+		TurningState = ETurningInPlace::ETIP_Left;
+	}
+	if(TurningState != ETurningInPlace::ETIP_NotTurning)
+	{
+		Last_Yaw = FMath::FInterpTo(Last_Yaw, 0.f, DeltaTime, 4.f);
+		AimOffset_Yaw = Last_Yaw;
+		if(FMath::Abs(AimOffset_Yaw) < 15.f)
+		{
+			TurningState = ETurningInPlace::ETIP_NotTurning;
+			StartingAimRotation = FRotator(0.f, GetBaseAimRotation().Yaw, 0.f);
+		}
+	}
+}
+
+void ABlasterCharacter::ServerEquipButtonPressed_Implementation()
+{
+	if(Combat)	// 客户端要想装备武器调用server的RPC来装备
+	{
+		Combat->EquipWeapon(OverlappingWeapon);
+	}
+}
+
+void ABlasterCharacter::SetOverlapWeapon(AWeaponBase* weapon)
+{
+	if(OverlappingWeapon)
+	{
+		OverlappingWeapon->ShowPickupWidget(false);
+	}
+	OverlappingWeapon = weapon;
+	if(IsLocallyControlled())	// 如果是服务器控制的Pawn发生了重叠单独处理,服务器本地控制的Character就不会将变量复制给客户端
+	{
+		if(OverlappingWeapon)
+		{
+			OverlappingWeapon->ShowPickupWidget(true);
+		}
+		
+	}
+}
+
+void ABlasterCharacter::OnRep_OverlappingWeapon(AWeaponBase* LastWeapon)
+{
+	if(OverlappingWeapon)
+	{
+		OverlappingWeapon->ShowPickupWidget(true);
+	}
+	if(LastWeapon)
+	{
+		LastWeapon->ShowPickupWidget(false);
+	}
+}
+
+bool ABlasterCharacter::IsWeaponEquipped()
+{
+	return (Combat && Combat->EquippedWeapon);
+}
+
+bool ABlasterCharacter::IsAiming()
+{
+	return (Combat && Combat->bIsAiming);
+}
+
+AWeaponBase* ABlasterCharacter::GetEquippedWeapon()
+{
+	if(Combat && Combat->EquippedWeapon)
+	{
+		return Combat->EquippedWeapon;
+	}
+	return nullptr;
+}
+
+
 
 
 

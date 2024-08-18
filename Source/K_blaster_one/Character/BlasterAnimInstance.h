@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Animation/AnimInstance.h"
+#include "K_blaster_one/BlasterType/TurningInPlace.h"
 #include "BlasterAnimInstance.generated.h"
 
 /**
@@ -29,4 +30,37 @@ private:
 
 	UPROPERTY(BlueprintReadOnly, Category = K_Movement, meta = (AllowPrivateAccess="true"))
 	bool bIsAccelerating;
+	
+	UPROPERTY(BlueprintReadOnly, Category = K_Movement, meta = (AllowPrivateAccess="true"))
+	bool bIsCrouched;
+
+	UPROPERTY(BlueprintReadOnly, Category = K_Combat, meta = (AllowPrivateAccess="true"))
+	bool bWeaponEquipped;
+
+	class AWeaponBase* EquippedWeapon;
+	
+	UPROPERTY(BlueprintReadOnly, Category = K_Combat, meta = (AllowPrivateAccess="true"))
+	bool bIsAiming;
+
+	UPROPERTY(BlueprintReadOnly, Category = K_Movement, meta = (AllowPrivateAccess="true"))
+	float YawOffset;
+	
+	UPROPERTY(BlueprintReadOnly, Category = K_Movement, meta = (AllowPrivateAccess="true"))
+	float Lean;
+
+	FRotator CharacterRotatorLastFrame;
+	FRotator CharacterRotatorCurrFrame;
+	FRotator DeltaRotation;
+	
+	UPROPERTY(BlueprintReadOnly, Category = K_Movement, meta = (AllowPrivateAccess="true"))
+	float AO_Yaw;
+
+	UPROPERTY(BlueprintReadOnly, Category = K_Movement, meta = (AllowPrivateAccess="true"))
+	float AO_Pitch;
+
+	UPROPERTY(BlueprintReadOnly, Category = K_Combat, meta = (AllowPrivateAccess="true"))
+	FTransform LeftHandTransform;
+
+	UPROPERTY(BlueprintReadOnly, Category = K_Movement, meta = (AllowPrivateAccess="true"))
+	ETurningInPlace TurningInPlace;
 };

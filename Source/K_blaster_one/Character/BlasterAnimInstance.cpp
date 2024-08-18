@@ -1,6 +1,8 @@
 #include "BlasterAnimInstance.h"
 #include "BlasterCharacter.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "Kismet/KismetMathLibrary.h"
+#include "K_blaster_one/Weapon/WeaponBase.h"
 
 
 void UBlasterAnimInstance::NativeInitializeAnimation()
@@ -28,4 +30,47 @@ void UBlasterAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	bIsInAir = OurCharacter->GetCharacterMovement()->IsFalling();
 	
 	bIsAccelerating = OurCharacter->GetCharacterMovement()->GetCurrentAcceleration().Size() > 0.f;
+
+	bIsCrouched = OurCharacter->bIsCrouched;
+	
+	bWeaponEquipped = OurCharacter->IsWeaponEquipped();
+	
+	EquippedWeapon = OurCharacter->GetEquippedWeapon();
+	
+	bIsAiming = OurCharacter->IsAiming();
+	
+	TurningInPlace = OurCharacter->GetTurningState();
+	
+	// Yaw和Lean 当移动时的方向角度，用来控制播放哪个移动动画（Blend space）
+	// 偏航角为角色的前进方向和瞄准方向的差,客户端和服务器上都有该变量无须担心复制
+	FRotator AimRotation = OurCharacter->GetBaseAimRotation();	// 世界的东南西北偏航角
+	FRotator MovementRotation = UKismetMathLibrary::MakeRotFromX(OurCharacter->GetVelocity());
+	FRotator DeltaRot = UKismetMathLibrary::NormalizedDeltaRotator(MovementRotation, AimRotation);
+	DeltaRotation = FMath::RInterpTo(DeltaRotation, DeltaRot, DeltaSeconds, 5.f);
+	YawOffset = DeltaRotation.Yaw;
+	
+	CharacterRotatorLastFrame = CharacterRotatorCurrFrame;
+	CharacterRotatorCurrFrame = OurCharacter->GetActorRotation();
+	const FRotator Delta = UKismetMathLibrary::NormalizedDeltaRotator(CharacterRotatorCurrFrame, CharacterRotatorLastFrame);
+	const float Target = Delta.Yaw / DeltaSeconds;
+	const float Interp = FMath::FInterpTo(Lean, Target, DeltaSeconds, 6.f);
+	Lean = FMath::Clamp(Interp,-90.f, 90.f);
+
+	// 原地不同时，可旋转上半身的角度
+	AO_Yaw = OurCharacter->GetAO_Yaw();
+	AO_Pitch = OurCharacter->GetAO_Pitch();
+
+	if(	bWeaponEquipped && EquippedWeapon )
+	{
+		LeftHandTransform = EquippedWeapon->GetWeaponMesh()->GetSocketTransform(FName("LeftHandSocket"), RTS_World);
+		// 左手放在武器应该位移和旋转的量（Bone Space）
+		FVector OutPosition;
+		FRotator OutRotation;
+		// 取右手骨骼的tranform来做为骨骼空间的参照系
+		OurCharacter->GetMesh()->TransformToBoneSpace(FName("hand_r"), LeftHandTransform.GetLocation(), FRotator::ZeroRotator, OutPosition, OutRotation);
+		LeftHandTransform.SetLocation(OutPosition);
+		LeftHandTransform.SetRotation(FQuat(OutRotation));		// 四元数
+		// LeftHandTransform是BoneSpace中左手的正确位置变换，具体的IK变换在AnimBP中完成的
+	}
+	
 }

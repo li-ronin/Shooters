@@ -42,6 +42,9 @@ ABlasterCharacter::ABlasterCharacter()
 	NetUpdateFrequency = 66.f;
 	MinNetUpdateFrequency = 33.f;
 	// Server Net Tick Rate在配置文件里面设置
+
+	// Character 转身的速度
+	GetCharacterMovement()->RotationRate = FRotator(0.f, 0.f, 850.f);
 	
 }
 
@@ -60,6 +63,8 @@ void ABlasterCharacter::BeginPlay()
 	
 }
 
+
+
 void ABlasterCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
@@ -71,7 +76,7 @@ void ABlasterCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
 	
-	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &ACharacter::Jump);	// IE_Pressed是InputEventType
+	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &ThisClass::Jump);	// IE_Pressed是InputEventType
 	// 绑定我们自定义的Action函数
 	PlayerInputComponent->BindAxis("MoveForward", this, &ThisClass::MoveForward);
 	PlayerInputComponent->BindAxis("MoveRight", this, &ThisClass::MoveRight);
@@ -90,6 +95,17 @@ void ABlasterCharacter::PostInitializeComponents()
 	if(Combat)
 	{
 		Combat->Character = this;
+	}
+}
+
+void ABlasterCharacter::Jump()
+{
+	if(bIsCrouched)
+	{
+		UnCrouch();
+	}else
+	{
+		Super::Jump();		
 	}
 }
 
@@ -177,7 +193,6 @@ void ABlasterCharacter::AimOffset(float DeltaTime)
 	bool bIsInAir = GetCharacterMovement()->IsFalling();
 	if(FMath::Abs(Speed) <= 1e-6 && !bIsInAir)	// 站着不动，并且没有跳跃
 	{
-		// 让角色朝向移动方向，而不是镜头旋转方向
 		bUseControllerRotationYaw = true;
 		FRotator CurrAimRotation = FRotator(0.f, GetBaseAimRotation().Yaw, 0.f); 
 		AimOffset_Yaw = UKismetMathLibrary::NormalizedDeltaRotator(CurrAimRotation, StartingAimRotation).Yaw;
@@ -187,7 +202,6 @@ void ABlasterCharacter::AimOffset(float DeltaTime)
 		SetTurnInPlace(DeltaTime);
 	}else
 	{
-		// 让角色朝向镜头旋转方向, 而不是移动方向
 		bUseControllerRotationYaw = true;
 		StartingAimRotation = FRotator(0.f, GetBaseAimRotation().Yaw, 0.f);
 		AimOffset_Yaw = 0.f;

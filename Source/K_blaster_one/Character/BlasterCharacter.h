@@ -28,6 +28,7 @@ protected:
 	virtual void BeginPlay() override;
 	// Action Functions
 	// void Jump();
+	virtual void Jump() override;
 	void MoveForward(float Value);
 	void MoveRight(float Value);
 	void Turn(float Value);
@@ -37,6 +38,7 @@ protected:
 	void AimButtonPressed();
 	void AimButtonReleased();
 	void AimOffset(float DeltaTime);
+	
 private:
 	UPROPERTY(VisibleAnywhere, Category = K_Camera)
 	class USpringArmComponent* CameraBoom;

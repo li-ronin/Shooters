@@ -1,0 +1,1 @@
+Build/Windows/K_blaster_one/Content/Paks/*.ucas filter=lfs diff=lfs merge=lfs -text

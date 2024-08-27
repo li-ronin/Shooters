@@ -1,6 +1,6 @@
 #include "BlasterCharacter.h"
 
-#include "VectorUtil.h"
+//------------------------------
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
@@ -9,6 +9,7 @@
 #include "K_blaster_one/Weapon/WeaponBase.h"
 #include "Net/UnrealNetwork.h"
 #include "Kismet/KismetMathLibrary.h"
+#include "BlasterAnimInstance.h"
 
 ABlasterCharacter::ABlasterCharacter()
 {
@@ -29,7 +30,9 @@ ABlasterCharacter::ABlasterCharacter()
 	// Combat组件，可装备武器
 	Combat = CreateDefaultSubobject<UCombatComponent>(TEXT("CombatComponent"));	
 	Combat->SetIsReplicated(true);	  // 指定战斗组件为复制组件，复制Component不需要注册
-
+	// // Combat->SetComponentTickEnabled(true);
+	Combat->Character = this;
+	
 	GetCharacterMovement()->NavAgentProps.bCanCrouch = true;
 
 	GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);
@@ -63,7 +66,14 @@ void ABlasterCharacter::BeginPlay()
 	
 }
 
-
+void ABlasterCharacter::PostInitializeComponents()
+{
+	Super::PostInitializeComponents();
+	if(Combat)
+	{
+		Combat->Character = this;
+	}
+}
 
 void ABlasterCharacter::Tick(float DeltaTime)
 {
@@ -87,15 +97,21 @@ void ABlasterCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 	PlayerInputComponent->BindAction("Crouch", IE_Pressed, this, &ThisClass::CrouchButtonPressed);
 	PlayerInputComponent->BindAction("Aim", IE_Pressed, this, &ThisClass::AimButtonPressed);
 	PlayerInputComponent->BindAction("Aim", IE_Released, this, &ThisClass::AimButtonReleased);
+	PlayerInputComponent->BindAction("Fire", IE_Pressed, this, &ThisClass::FireButtonPressed);
+	PlayerInputComponent->BindAction("Fire", IE_Released, this, &ThisClass::FireButtonReleased);
 }
 
-void ABlasterCharacter::PostInitializeComponents()
+void ABlasterCharacter::PlayFireMontage(bool bAiming)
 {
-	Super::PostInitializeComponents();
-	if(Combat)
+	if(!Combat || !Combat->EquippedWeapon)return;
+	UAnimInstance* OurAnimInstance = GetMesh()->GetAnimInstance();
+	if(OurAnimInstance && FireMontage)
 	{
-		Combat->Character = this;
+		OurAnimInstance->Montage_Play(FireMontage);
+		FName SectionName = bAiming ? TEXT("RifleHip") : TEXT("RifleAim");
+		OurAnimInstance->Montage_JumpToSection(SectionName);
 	}
+	
 }
 
 void ABlasterCharacter::Jump()
@@ -156,6 +172,14 @@ void ABlasterCharacter::EquipButtonPressed()
 	}
 }
 
+void ABlasterCharacter::ServerEquipButtonPressed_Implementation()
+{
+	if(Combat)	// 客户端要想装备武器调用server的RPC来装备
+	{
+		Combat->EquipWeapon(OverlappingWeapon);
+	}
+}
+
 void ABlasterCharacter::CrouchButtonPressed()
 {
 	if(bIsCrouched)
@@ -181,6 +205,22 @@ void ABlasterCharacter::AimButtonReleased()
 	if(Combat)
 	{
 		Combat->SetAmingState(false); 
+	}
+}
+
+void ABlasterCharacter::FireButtonPressed()
+{
+	if(Combat && Combat->EquippedWeapon)
+	{
+		Combat->FireButtonPressed(true);
+	}
+}
+
+void ABlasterCharacter::FireButtonReleased()
+{
+	if(Combat && Combat->EquippedWeapon)
+	{
+		Combat->FireButtonPressed(false);
 	}
 }
 
@@ -243,14 +283,6 @@ void ABlasterCharacter::SetTurnInPlace(float DeltaTime)
 			TurningState = ETurningInPlace::ETIP_NotTurning;
 			StartingAimRotation = FRotator(0.f, GetBaseAimRotation().Yaw, 0.f);
 		}
-	}
-}
-
-void ABlasterCharacter::ServerEquipButtonPressed_Implementation()
-{
-	if(Combat)	// 客户端要想装备武器调用server的RPC来装备
-	{
-		Combat->EquipWeapon(OverlappingWeapon);
 	}
 }
 

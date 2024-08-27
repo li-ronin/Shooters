@@ -28,6 +28,9 @@ public:
 	void ShowPickupWidget(bool bShowWidget);
 	
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;	// 在该函数中注册要复制的变量
+
+	virtual void Fire(const FVector& HitTarget);
+	
 protected:
 	virtual void BeginPlay() override;
 
@@ -49,7 +52,7 @@ protected:
 	
 private:
 	UPROPERTY(VisibleAnywhere, Category=WeaponProperty)
-	USkeletalMeshComponent* WeaponMesh;
+	class USkeletalMeshComponent* WeaponMesh;
 
 	UPROPERTY(VisibleAnywhere, Category=WeaponProperty)
 	class USphereComponent* AreaSphere;
@@ -63,11 +66,33 @@ private:
 	
 	UPROPERTY(VisibleAnywhere, Category=WeaponProperty)
 	class UWidgetComponent* PickupWidget;
+
+	UPROPERTY(EditAnywhere, Category = WeaponProperty)
+	class UAnimationAsset* FireAnimation;
+
+	UPROPERTY(EditAnywhere)
+	TSubclassOf<class ACasting> CastingClass;
+	
 public:
 	void SetWeaponState(EWeaponState state);
 	FORCEINLINE EWeaponState GetWeaponState(){return WeaponState;}
 	FORCEINLINE USkeletalMeshComponent* GetWeaponMesh(){return WeaponMesh;}
 	FORCEINLINE USphereComponent* GetAreaSphere() const{return AreaSphere;}
 	
+	// 准星纹理
+	UPROPERTY(EditAnywhere, Category = Crosshairs)
+	class UTexture2D* CrosshairsCenter;
+
+	UPROPERTY(EditAnywhere, Category = Crosshairs)
+	UTexture2D* CrosshairsLeft;
+
+	UPROPERTY(EditAnywhere, Category = Crosshairs)
+	UTexture2D* CrosshairsRight;
+
+	UPROPERTY(EditAnywhere, Category = Crosshairs)
+	UTexture2D* CrosshairsTop;
+
+	UPROPERTY(EditAnywhere, Category = Crosshairs)
+	UTexture2D* CrosshairsBottom;
 	
 };

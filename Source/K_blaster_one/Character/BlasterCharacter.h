@@ -22,7 +22,8 @@ public:
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;	// 在该函数中注册要复制的变量
 
 	virtual void PostInitializeComponents() override;
-	
+
+	void PlayFireMontage(bool bAiming);
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
@@ -37,8 +38,10 @@ protected:
 	void CrouchButtonPressed();
 	void AimButtonPressed();
 	void AimButtonReleased();
-	void AimOffset(float DeltaTime);
+	void FireButtonPressed();
+	void FireButtonReleased();
 	
+	void AimOffset(float DeltaTime);
 private:
 	UPROPERTY(VisibleAnywhere, Category = K_Camera)
 	class USpringArmComponent* CameraBoom;
@@ -70,7 +73,9 @@ private:
 	ETurningInPlace TurningState;
 	
 	void SetTurnInPlace(float DeltaTime);
-	
+
+	UPROPERTY(EditAnywhere, Category = K_Combat)
+	class UAnimMontage* FireMontage;
 public:
 	// 由于重叠的检测只在服务器上，所以客户端上要想要显示重叠就需要把服务器的变量值复制给客户端。
 	// 一旦角色和武器重叠时，就把OverlappingWeapon变量复制到所有客户端的角色上，复制只在变量改变的时候起作用，并不会每帧都更新

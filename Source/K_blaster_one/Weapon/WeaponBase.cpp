@@ -1,8 +1,12 @@
 #include "WeaponBase.h"
 #include "Components/SphereComponent.h"
 #include "Components/WidgetComponent.h"
+#include "Components/SkeletalMeshComponent.h"
 #include "../Character/BlasterCharacter.h"
 #include "Net/UnrealNetwork.h"
+#include "Animation/AnimationAsset.h"
+#include "Casting.h"
+#include "Engine/SkeletalMeshSocket.h"
 
 AWeaponBase::AWeaponBase()
 {
@@ -71,7 +75,6 @@ void AWeaponBase::OnRep_WeaponState() // 客户端执行
 			AreaSphere->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 			break;
 	}
-	
 }
 
 void AWeaponBase::SetWeaponState(EWeaponState state)
@@ -84,7 +87,6 @@ void AWeaponBase::SetWeaponState(EWeaponState state)
 		AreaSphere->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		break;
 	}
-	
 }
 
 void AWeaponBase::Tick(float DeltaTime)
@@ -107,3 +109,25 @@ void AWeaponBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifet
 	DOREPLIFETIME(AWeaponBase, WeaponState);
 }
 
+void AWeaponBase::Fire(const FVector& HitTarget)
+{
+	if(FireAnimation)
+	{
+		WeaponMesh->PlayAnimation(FireAnimation, false);
+	}
+	if(CastingClass)
+	{
+		const USkeletalMeshSocket* AmmoEjectSocket = WeaponMesh->GetSocketByName(FName("AmmoEject"));
+		if(AmmoEjectSocket)
+		{
+			FTransform SocketTransform = AmmoEjectSocket->GetSocketTransform(WeaponMesh);
+			// UE_LOG(LogTemp, Warning, TEXT("Target postion: %f, %f, %f"),HitTarget.X, HitTarget.Y, HitTarget.Z);
+			UWorld* World = GetWorld();
+			if(World)
+			{
+				World->SpawnActor<ACasting>(CastingClass, SocketTransform.GetLocation(),SocketTransform.GetRotation().Rotator());
+			}
+		}
+	}
+	
+}

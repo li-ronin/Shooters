@@ -57,10 +57,14 @@ private:
 
 	UPROPERTY(BlueprintReadOnly, Category = K_Movement, meta = (AllowPrivateAccess="true"))
 	float AO_Pitch;
+	
+	UPROPERTY(BlueprintReadOnly, Category = K_Movement, meta = (AllowPrivateAccess="true"))
+	ETurningInPlace TurningInPlace;
 
 	UPROPERTY(BlueprintReadOnly, Category = K_Combat, meta = (AllowPrivateAccess="true"))
 	FTransform LeftHandTransform;
-
-	UPROPERTY(BlueprintReadOnly, Category = K_Movement, meta = (AllowPrivateAccess="true"))
-	ETurningInPlace TurningInPlace;
+	
+	UPROPERTY(BlueprintReadOnly, Category = K_Combat, meta = (AllowPrivateAccess="true"))
+	FRotator RightHandRotation;
+	
 };

@@ -24,6 +24,8 @@ public:
 	virtual void PostInitializeComponents() override;
 
 	void PlayFireMontage(bool bAiming);
+	
+	void PlayHitReactMontage();
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
@@ -76,6 +78,15 @@ private:
 
 	UPROPERTY(EditAnywhere, Category = K_Combat)
 	class UAnimMontage* FireMontage;
+
+	UPROPERTY(EditAnywhere, Category = K_Combat)
+	class UAnimMontage* HitReactMontage;
+	
+	void Hide();
+
+	UPROPERTY(EditAnywhere)
+	float CameraDistance = 150.f;
+	
 public:
 	// 由于重叠的检测只在服务器上，所以客户端上要想要显示重叠就需要把服务器的变量值复制给客户端。
 	// 一旦角色和武器重叠时，就把OverlappingWeapon变量复制到所有客户端的角色上，复制只在变量改变的时候起作用，并不会每帧都更新
@@ -86,6 +97,8 @@ public:
 	FORCEINLINE float GetAO_Yaw() { return AimOffset_Yaw; } 
 	FORCEINLINE float GetAO_Pitch() { return AimOffset_Pitch; }
 	FORCEINLINE ETurningInPlace GetTurningState() { return TurningState; }
+	FORCEINLINE UCameraComponent* GetFollowCamera() const {return FollowCamera;}
 	AWeaponBase* GetEquippedWeapon();
+	FVector_NetQuantize GetHitTarget();
 };
 

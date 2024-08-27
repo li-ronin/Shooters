@@ -66,7 +66,25 @@ private:
 	float AimWalkSpeed;
 
 	bool bFireButtonPressed;
+
+	// HUD Crosshairs
+	float CrosshairVelocityFactor;
+	float CrosshairInAirFactor;
 	
+	FVector_NetQuantize HitTarget;
+
+	// 没瞄准时候的视野大小
+	float DefaultFOV;
+
+	float CurrentFOV;
+	
+	UPROPERTY(EditAnywhere, Category = K_Combat)
+	float ZoomedFOV = 30.f;
+	
+	UPROPERTY(EditAnywhere, Category = K_Combat)
+	float ZoomInterpSpeed = 20.f;
+	
+	void InterpFOV(float DeltaTime);
 public:	
 
 		

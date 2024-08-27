@@ -80,6 +80,7 @@ void ABlasterCharacter::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 
 	AimOffset(DeltaTime);
+	Hide();
 }
 
 void ABlasterCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -112,6 +113,17 @@ void ABlasterCharacter::PlayFireMontage(bool bAiming)
 		OurAnimInstance->Montage_JumpToSection(SectionName);
 	}
 	
+}
+
+void ABlasterCharacter::PlayHitReactMontage()
+{
+	UAnimInstance* OurAnimInstance = GetMesh()->GetAnimInstance();
+	if(OurAnimInstance && HitReactMontage)
+	{
+		OurAnimInstance->Montage_Play(HitReactMontage);
+		FName SectionName = TEXT("FromLeft");
+		OurAnimInstance->Montage_JumpToSection(SectionName);
+	}
 }
 
 void ABlasterCharacter::Jump()
@@ -286,6 +298,26 @@ void ABlasterCharacter::SetTurnInPlace(float DeltaTime)
 	}
 }
 
+void ABlasterCharacter::Hide()
+{
+	if(!IsLocallyControlled())return;
+	if((FollowCamera->GetComponentLocation() - GetActorLocation()).Size() < CameraDistance)
+	{
+		GetMesh()->SetVisibility(false);
+		if(Combat && Combat->EquippedWeapon && Combat->EquippedWeapon->GetWeaponMesh())
+		{
+			Combat->EquippedWeapon->GetWeaponMesh()->bOwnerNoSee = true;
+		}
+	}else
+	{
+		GetMesh()->SetVisibility(true);
+		if(Combat && Combat->EquippedWeapon && Combat->EquippedWeapon->GetWeaponMesh())
+		{
+			Combat->EquippedWeapon->GetWeaponMesh()->bOwnerNoSee = false;
+		}
+	}
+}
+
 void ABlasterCharacter::SetOverlapWeapon(AWeaponBase* weapon)
 {
 	if(OverlappingWeapon)
@@ -332,6 +364,12 @@ AWeaponBase* ABlasterCharacter::GetEquippedWeapon()
 		return Combat->EquippedWeapon;
 	}
 	return nullptr;
+}
+
+FVector_NetQuantize ABlasterCharacter::GetHitTarget()
+{
+	if(!Combat)return  FVector();
+	return Combat->HitTarget;
 }
 
 

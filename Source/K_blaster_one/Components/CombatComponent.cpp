@@ -1,6 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "CombatComponent.h"
+#include "Camera/CameraComponent.h"
 #include "Engine/SkeletalMeshSocket.h"
 #include "K_blaster_one/Character/BlasterCharacter.h"
 #include "K_blaster_one/Weapon/WeaponBase.h"
@@ -23,13 +24,29 @@ void UCombatComponent::BeginPlay()
 	Super::BeginPlay();
 	if(Character){
 		Character->GetCharacterMovement()->MaxWalkSpeed = BaseWalkSpeed;
+		UCameraComponent* FollowCamera = Character->GetFollowCamera();
+		if(Character->GetFollowCamera())
+		{
+			DefaultFOV = FollowCamera->FieldOfView;
+			CurrentFOV = DefaultFOV;
+		}
 	}
 }
 
 void UCombatComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-	SetHUDCrosshairs(DeltaTime);
+	
+	
+	if(Character && Character->IsLocallyControlled())
+	{
+		FHitResult HitResult;
+		TraceUnderCrosshairs(HitResult);
+		HitTarget = HitResult.ImpactPoint;
+		SetHUDCrosshairs(DeltaTime);
+		InterpFOV(DeltaTime);
+	}
+	
 }
 
 void UCombatComponent::SetHUDCrosshairs(float DeltaTime)
@@ -61,6 +78,25 @@ void UCombatComponent::SetHUDCrosshairs(float DeltaTime)
 				HUDPackage.CrosshairsTop = nullptr;
 				HUDPackage.CrosshairsBottom = nullptr;
 			}
+			FVector2d WalkSpeedRange(0.f, Character->GetCharacterMovement()->MaxWalkSpeed);
+			FVector2d VelocityMultiplerRange(0.f, 1.f);
+			FVector Velocity = Character->GetVelocity();
+			Velocity.Z = 0.f;
+			if(bIsAiming)
+			{
+				HUDPackage.CrosshairSpread = 0.f;
+			}else
+			{
+				CrosshairVelocityFactor = FMath::GetMappedRangeValueClamped(WalkSpeedRange, VelocityMultiplerRange, Velocity.Size());
+				if(Character->GetCharacterMovement()->IsFalling())
+				{
+					CrosshairInAirFactor = FMath::FInterpTo(CrosshairInAirFactor, 2.25f, DeltaTime, 2.25f);
+				}else
+				{
+					CrosshairInAirFactor = FMath::FInterpTo(CrosshairInAirFactor, 0.f, DeltaTime, 30.f);
+				}			
+				HUDPackage.CrosshairSpread = CrosshairVelocityFactor + CrosshairInAirFactor;
+			}
 			
 			HUD->SetHUDPackage(HUDPackage);
 		}
@@ -86,6 +122,22 @@ void UCombatComponent::OnRep_EquippedWeapon()	// 复制给客户端时的处理
 	}
 }
 
+void UCombatComponent::InterpFOV(float DeltaTime)
+{
+	if(EquippedWeapon == nullptr)return;
+	if(bIsAiming)
+	{
+		CurrentFOV = FMath::FInterpTo(CurrentFOV, EquippedWeapon->GetZoomedFOV(), DeltaTime, EquippedWeapon->GetZoomInterpSpeed());
+	}else
+	{
+		CurrentFOV = FMath::FInterpTo(CurrentFOV, DefaultFOV, DeltaTime, ZoomInterpSpeed);
+	}
+	if(Character && Character->GetFollowCamera())
+	{
+		Character->GetFollowCamera()->SetFieldOfView(CurrentFOV);
+	}
+}
+
 void UCombatComponent::SetAmingState(bool bAming)
 {
 	bIsAiming = bAming;		// 本地上我们角色的bIsAiming变量
@@ -100,7 +152,6 @@ void UCombatComponent::FireButtonPressed(bool bPressed)
 	bFireButtonPressed = bPressed;
 	if(bFireButtonPressed)
 	{
-		
 		FHitResult HitResult;
 		TraceUnderCrosshairs(HitResult);
 		ServerFire(HitResult.ImpactPoint);
@@ -123,7 +174,14 @@ void UCombatComponent::TraceUnderCrosshairs(FHitResult& TraceHitResult)
 		CrosshairWorldDirection);
 	if(bScreenToWorld)
 	{
+		
+		 
 		FVector Start = CrosshairWorldPosition;
+		if(Character)
+		{
+			float DistanceToCharacter = (Character->GetActorLocation() - Start).Size();
+			Start +=  CrosshairWorldDirection*(DistanceToCharacter + 100.f);
+		}
 		FVector End = Start + CrosshairWorldDirection * STEP;
 		GetWorld()->LineTraceSingleByChannel(
 			TraceHitResult,
@@ -132,7 +190,7 @@ void UCombatComponent::TraceUnderCrosshairs(FHitResult& TraceHitResult)
 			ECollisionChannel::ECC_Visibility);
 		if(!TraceHitResult.bBlockingHit)
 		{
-			TraceHitResult.ImpactPoint = End;
+			TraceHitResult.ImpactPoint = FVector_NetQuantize(End);
 		}
 	}
 }

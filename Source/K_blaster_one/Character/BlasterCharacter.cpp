@@ -10,6 +10,7 @@
 #include "Net/UnrealNetwork.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "BlasterAnimInstance.h"
+#include "K_blaster_one/K_blaster_one.h"
 
 ABlasterCharacter::ABlasterCharacter()
 {
@@ -36,8 +37,13 @@ ABlasterCharacter::ABlasterCharacter()
 	GetCharacterMovement()->NavAgentProps.bCanCrouch = true;
 
 	GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);
+	GetMesh()->SetCollisionObjectType(ECC_SkeletalMesh);
 	GetMesh()->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);
+	GetMesh()->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
 
+	// Character 转身的速度
+	GetCharacterMovement()->RotationRate = FRotator(0.f, 0.f, 850.f);
+	
 	TurningState = ETurningInPlace::ETIP_NotTurning;
 
 	// 网络更新频率
@@ -46,8 +52,7 @@ ABlasterCharacter::ABlasterCharacter()
 	MinNetUpdateFrequency = 33.f;
 	// Server Net Tick Rate在配置文件里面设置
 
-	// Character 转身的速度
-	GetCharacterMovement()->RotationRate = FRotator(0.f, 0.f, 850.f);
+	
 	
 }
 
@@ -78,9 +83,14 @@ void ABlasterCharacter::PostInitializeComponents()
 void ABlasterCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-
-	AimOffset(DeltaTime);
-	Hide();
+	if(GetLocalRole() > ROLE_SimulatedProxy)
+	{
+		AimOffset(DeltaTime);
+	}else{
+		SimProxyTurn();
+	}
+	
+	HideCharacter();
 }
 
 void ABlasterCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -109,7 +119,7 @@ void ABlasterCharacter::PlayFireMontage(bool bAiming)
 	if(OurAnimInstance && FireMontage)
 	{
 		OurAnimInstance->Montage_Play(FireMontage);
-		FName SectionName = bAiming ? TEXT("RifleHip") : TEXT("RifleAim");
+		FName SectionName = bAiming ? TEXT("RifleAim") : TEXT("RifleHip");
 		OurAnimInstance->Montage_JumpToSection(SectionName);
 	}
 	
@@ -124,6 +134,11 @@ void ABlasterCharacter::PlayHitReactMontage()
 		FName SectionName = TEXT("FromLeft");
 		OurAnimInstance->Montage_JumpToSection(SectionName);
 	}
+}
+
+void ABlasterCharacter::MulticastHit_Implementation()
+{
+	PlayHitReactMontage();
 }
 
 void ABlasterCharacter::Jump()
@@ -245,6 +260,7 @@ void ABlasterCharacter::AimOffset(float DeltaTime)
 	bool bIsInAir = GetCharacterMovement()->IsFalling();
 	if(FMath::Abs(Speed) <= 1e-6 && !bIsInAir)	// 站着不动，并且没有跳跃
 	{
+		bRotateRootBone = true;
 		bUseControllerRotationYaw = true;
 		FRotator CurrAimRotation = FRotator(0.f, GetBaseAimRotation().Yaw, 0.f); 
 		AimOffset_Yaw = UKismetMathLibrary::NormalizedDeltaRotator(CurrAimRotation, StartingAimRotation).Yaw;
@@ -254,6 +270,7 @@ void ABlasterCharacter::AimOffset(float DeltaTime)
 		SetTurnInPlace(DeltaTime);
 	}else
 	{
+		bRotateRootBone = false;
 		bUseControllerRotationYaw = true;
 		StartingAimRotation = FRotator(0.f, GetBaseAimRotation().Yaw, 0.f);
 		AimOffset_Yaw = 0.f;
@@ -277,6 +294,12 @@ void ABlasterCharacter::AimOffset(float DeltaTime)
 	}
 }
 
+void ABlasterCharacter::SimProxyTurn()
+{
+	if(!Combat || !Combat->EquippedWeapon)return;
+	bRotateRootBone = false;
+}
+
 void ABlasterCharacter::SetTurnInPlace(float DeltaTime)
 {
 	if(AimOffset_Yaw > 90.f)
@@ -298,7 +321,7 @@ void ABlasterCharacter::SetTurnInPlace(float DeltaTime)
 	}
 }
 
-void ABlasterCharacter::Hide()
+void ABlasterCharacter::HideCharacter()
 {
 	if(!IsLocallyControlled())return;
 	if((FollowCamera->GetComponentLocation() - GetActorLocation()).Size() < CameraDistance)

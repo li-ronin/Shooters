@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
+#include "K_blaster_one/HUD/BlasterHUD.h"
 #include "CombatComponent.generated.h"
 #define STEP 80000.f
 
@@ -72,7 +73,9 @@ private:
 	float CrosshairInAirFactor;
 	
 	FVector_NetQuantize HitTarget;
-
+	
+	FHUDPackage HUDPackage;
+	
 	// 没瞄准时候的视野大小
 	float DefaultFOV;
 

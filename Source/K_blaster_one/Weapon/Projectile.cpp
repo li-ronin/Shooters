@@ -7,6 +7,7 @@
 #include "Particles/ParticleSystem.h"
 #include "Sound/SoundCue.h"
 #include "K_blaster_one/Character/BlasterCharacter.h"
+#include "K_blaster_one/K_blaster_one.h"
 
 AProjectile::AProjectile()
 {
@@ -20,7 +21,7 @@ AProjectile::AProjectile()
 	CollisionBox->SetCollisionResponseToAllChannels(ECR_Ignore);
 	CollisionBox->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
 	CollisionBox->SetCollisionResponseToChannel(ECC_WorldStatic, ECR_Block);
-	CollisionBox->SetCollisionResponseToChannel(ECC_Pawn, ECR_Block);
+	CollisionBox->SetCollisionResponseToChannel(ECC_SkeletalMesh, ECR_Block);
 	CollisionBox->SetVisibility(true);
 	
 	ProjectileMovementComponent = CreateDefaultSubobject<UProjectileMovementComponent>("ProjectileMovementComponent");
@@ -61,7 +62,7 @@ void AProjectile::OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimi
 	ABlasterCharacter* BlasterCharacter = Cast<ABlasterCharacter>(OtherActor);
 	if(BlasterCharacter)
 	{
-		BlasterCharacter->PlayHitReactMontage();
+		BlasterCharacter->MulticastHit();
 	}
 	Destroy();
 }

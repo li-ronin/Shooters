@@ -66,5 +66,11 @@ private:
 	
 	UPROPERTY(BlueprintReadOnly, Category = K_Combat, meta = (AllowPrivateAccess="true"))
 	FRotator RightHandRotation;
+
+	UPROPERTY(BlueprintReadOnly, Category = K_Combat, meta = (AllowPrivateAccess="true"))
+	bool bLocallyControlled;
+
+	UPROPERTY(BlueprintReadOnly, Category = K_Combat, meta = (AllowPrivateAccess="true"))
+	bool bRotateRootBone;
 	
 };

@@ -5,10 +5,11 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
 #include "K_blaster_one/BlasterType/TurningInPlace.h"
+#include "K_blaster_one/Interfaces/CrosshairsInterface.h"
 #include "BlasterCharacter.generated.h"
 
 UCLASS()
-class K_BLASTER_ONE_API ABlasterCharacter : public ACharacter
+class K_BLASTER_ONE_API ABlasterCharacter : public ACharacter, public ICrosshairsInterface
 {
 	GENERATED_BODY()
 
@@ -25,12 +26,12 @@ public:
 
 	void PlayFireMontage(bool bAiming);
 	
-	void PlayHitReactMontage();
+	UFUNCTION(NetMulticast, Unreliable)
+	void MulticastHit();
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 	// Action Functions
-	// void Jump();
 	virtual void Jump() override;
 	void MoveForward(float Value);
 	void MoveRight(float Value);
@@ -44,6 +45,8 @@ protected:
 	void FireButtonReleased();
 	
 	void AimOffset(float DeltaTime);
+	void SimProxyTurn();
+	void PlayHitReactMontage();
 private:
 	UPROPERTY(VisibleAnywhere, Category = K_Camera)
 	class USpringArmComponent* CameraBoom;
@@ -82,11 +85,12 @@ private:
 	UPROPERTY(EditAnywhere, Category = K_Combat)
 	class UAnimMontage* HitReactMontage;
 	
-	void Hide();
+	void HideCharacter();
 
 	UPROPERTY(EditAnywhere)
 	float CameraDistance = 150.f;
-	
+
+	bool bRotateRootBone; 
 public:
 	// 由于重叠的检测只在服务器上，所以客户端上要想要显示重叠就需要把服务器的变量值复制给客户端。
 	// 一旦角色和武器重叠时，就把OverlappingWeapon变量复制到所有客户端的角色上，复制只在变量改变的时候起作用，并不会每帧都更新
@@ -100,5 +104,6 @@ public:
 	FORCEINLINE UCameraComponent* GetFollowCamera() const {return FollowCamera;}
 	AWeaponBase* GetEquippedWeapon();
 	FVector_NetQuantize GetHitTarget();
+	FORCEINLINE bool ShouldRotateRootBone() const {return bRotateRootBone;}
 };
 

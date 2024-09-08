@@ -40,6 +40,8 @@ void UBlasterAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	bIsAiming = OurCharacter->IsAiming();
 	
 	TurningInPlace = OurCharacter->GetTurningState();
+
+	bRotateRootBone = OurCharacter->ShouldRotateRootBone();
 	
 	// Yaw和Lean 当移动时的方向角度，用来控制播放哪个移动动画（Blend space）
 	// 偏航角为角色的前进方向和瞄准方向的差,客户端和服务器上都有该变量无须担心复制
@@ -71,12 +73,15 @@ void UBlasterAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 		LeftHandTransform.SetLocation(OutPosition);
 		LeftHandTransform.SetRotation(FQuat(OutRotation));		// 四元数
 		// LeftHandTransform是BoneSpace中左手的正确位置变换，具体的IK变换在AnimBP中完成的
-
-		FTransform RightHandTransform = EquippedWeapon->GetWeaponMesh()->GetSocketTransform(FName("Hand_R"), RTS_World);
-		// 旋转右手骨骼，让拿枪的时候枪口指向瞄准的目标
-		// 获得从当前角度到目标角度的旋转
-		RightHandRotation = UKismetMathLibrary::FindLookAtRotation(RightHandTransform.GetLocation(), RightHandTransform.GetLocation()+(RightHandTransform.GetLocation()-OurCharacter->GetHitTarget()));
-		//
+		if(OurCharacter->IsLocallyControlled())
+		{
+			bLocallyControlled = true;
+			FTransform RightHandTransform = EquippedWeapon->GetWeaponMesh()->GetSocketTransform(FName("Hand_R"), RTS_World);
+			// 旋转右手骨骼，让拿枪的时候枪口指向瞄准的目标
+			// 获得从当前角度到目标角度的旋转
+			FRotator LookatRotation = UKismetMathLibrary::FindLookAtRotation(RightHandTransform.GetLocation(), RightHandTransform.GetLocation()+(RightHandTransform.GetLocation()-OurCharacter->GetHitTarget())); 
+			RightHandRotation = FMath::RInterpTo(RightHandRotation, LookatRotation, DeltaSeconds, 20.f);
+		}
 		// FTransform MuzzleTipTransform = EquippedWeapon->GetWeaponMesh()->GetSocketTransform(FName("MuzzleFlash"), RTS_World);
 		// FVector Muzzle_X(FRotationMatrix(MuzzleTipTransform.GetRotation().Rotator()).GetUnitAxis(EAxis::X));
 		// DrawDebugLine(GetWorld(), MuzzleTipTransform.GetLocation(), MuzzleTipTransform.GetLocation() + Muzzle_X*100.f, FColor::Red);

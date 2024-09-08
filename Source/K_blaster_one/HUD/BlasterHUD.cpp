@@ -17,32 +17,32 @@ void ABlasterHUD::DrawHUD()
 		if(HUDPackage.CrosshairsCenter)
 		{
 			FVector2d Spread(0.f, 0.f);
-			DrawCrosshair(HUDPackage.CrosshairsCenter, ViewportCenter, Spread);
+			DrawCrosshair(HUDPackage.CrosshairsCenter, ViewportCenter, Spread, HUDPackage.CrosshairsColor);
 		}
 		if(HUDPackage.CrosshairsLeft)
 		{
 			FVector2d Spread(-SpreadScaled, 0.f);
-			DrawCrosshair(HUDPackage.CrosshairsLeft, ViewportCenter, Spread);
+			DrawCrosshair(HUDPackage.CrosshairsLeft, ViewportCenter, Spread, HUDPackage.CrosshairsColor);
 		}
 		if(HUDPackage.CrosshairsRight)
 		{
 			FVector2d Spread(SpreadScaled, 0.f);
-			DrawCrosshair(HUDPackage.CrosshairsRight, ViewportCenter, Spread);
+			DrawCrosshair(HUDPackage.CrosshairsRight, ViewportCenter, Spread, HUDPackage.CrosshairsColor);
 		}
 		if(HUDPackage.CrosshairsTop)
 		{
 			FVector2d Spread(0.f, -SpreadScaled);
-			DrawCrosshair(HUDPackage.CrosshairsTop, ViewportCenter, Spread);
+			DrawCrosshair(HUDPackage.CrosshairsTop, ViewportCenter, Spread, HUDPackage.CrosshairsColor);
 		}
 		if(HUDPackage.CrosshairsBottom)
 		{
 			FVector2d Spread(0.f, SpreadScaled);
-			DrawCrosshair(HUDPackage.CrosshairsBottom, ViewportCenter, Spread);
+			DrawCrosshair(HUDPackage.CrosshairsBottom, ViewportCenter, Spread, HUDPackage.CrosshairsColor);
 		}
 	}
 }
 
-void ABlasterHUD::DrawCrosshair(UTexture2D* Texture, FVector2D ViewportCenter, FVector2d Spread)
+void ABlasterHUD::DrawCrosshair(UTexture2D* Texture, FVector2D ViewportCenter, FVector2d Spread, FLinearColor CrosshairsColor)
 {
 	const float TextureWidth = Texture->GetSizeX();
 	const float TextureHeight = Texture->GetSizeY();
@@ -50,5 +50,14 @@ void ABlasterHUD::DrawCrosshair(UTexture2D* Texture, FVector2D ViewportCenter, F
 		ViewportCenter.X - (TextureWidth/2.f) + Spread.X,
 		ViewportCenter.Y - (TextureHeight/2.f) + Spread.Y
 	);
-	DrawTexture(Texture, TextureDrawPoint.X, TextureDrawPoint.Y, TextureWidth, TextureHeight, 0.f,0.f,1.f,1.f,FLinearColor::White);
+	DrawTexture(Texture,
+		TextureDrawPoint.X,
+		TextureDrawPoint.Y,
+		TextureWidth,
+		TextureHeight,
+		0.f,
+		0.f,
+		1.f,
+		1.f,
+		CrosshairsColor);
 }

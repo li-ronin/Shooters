@@ -9,7 +9,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "Net/UnrealNetwork.h"
 #include "K_blaster_one/PlayerController/BlasterPlayerController.h"
-#include "K_blaster_one/HUD/BlasterHUD.h"
+
 
 UCombatComponent::UCombatComponent()
 {
@@ -36,8 +36,6 @@ void UCombatComponent::BeginPlay()
 void UCombatComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-	
-	
 	if(Character && Character->IsLocallyControlled())
 	{
 		FHitResult HitResult;
@@ -62,7 +60,7 @@ void UCombatComponent::SetHUDCrosshairs(float DeltaTime)
 		if(!HUD) HUD = Cast<ABlasterHUD>(Controller->GetHUD());
 		if(HUD)
 		{
-			FHUDPackage HUDPackage;
+			
 			if(EquippedWeapon)
 			{
 				HUDPackage.CrosshairsCenter = EquippedWeapon->CrosshairsCenter;
@@ -192,6 +190,13 @@ void UCombatComponent::TraceUnderCrosshairs(FHitResult& TraceHitResult)
 		{
 			TraceHitResult.ImpactPoint = FVector_NetQuantize(End);
 		}
+		if(TraceHitResult.GetActor() && TraceHitResult.GetActor()->Implements<UCrosshairsInterface>())
+		{
+			HUDPackage.CrosshairsColor = FLinearColor::Red;
+		}else
+		{
+			HUDPackage.CrosshairsColor = FLinearColor::White;
+		}
 	}
 }
 
@@ -232,7 +237,6 @@ void UCombatComponent::EquipWeapon(AWeaponBase* WeaponToEquipped)
 	
 	Character->bUseControllerRotationYaw = true;
 	Character->GetCharacterMovement()->bOrientRotationToMovement = false;	// 拿到武器之后让角色朝向镜头旋转方向, 而不是移动方向
-	
 }
 
 

@@ -44,7 +44,6 @@ void UCombatComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActo
 		SetHUDCrosshairs(DeltaTime);
 		InterpFOV(DeltaTime);
 	}
-	
 }
 
 void UCombatComponent::SetHUDCrosshairs(float DeltaTime)

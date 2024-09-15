@@ -10,7 +10,9 @@
 #include "Net/UnrealNetwork.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "BlasterAnimInstance.h"
+#include "K_blaster_one/PlayerController/BlasterPlayerController.h"
 #include "K_blaster_one/K_blaster_one.h"
+#include "K_blaster_one/GameMode/BlasterGameMode.h"
 
 ABlasterCharacter::ABlasterCharacter()
 {
@@ -51,8 +53,6 @@ ABlasterCharacter::ABlasterCharacter()
 	NetUpdateFrequency = 66.f;
 	MinNetUpdateFrequency = 33.f;
 	// Server Net Tick Rate在配置文件里面设置
-
-	
 	
 }
 
@@ -63,12 +63,18 @@ void ABlasterCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Ou
 	// 注册重叠武器的变量以复制,只有在拥有此角色的客户端上（也就是Remote=ROLE_AutonomousProxy）显示Widget才有意义，无需复制到所有客户端上。
 	// DOREPLIFETIME(ABlasterCharacter, OverlappingWeapon);
 	DOREPLIFETIME_CONDITION(ABlasterCharacter, OverlappingWeapon, COND_OwnerOnly);
+	DOREPLIFETIME(ABlasterCharacter, Health);
 }
 
 void ABlasterCharacter::BeginPlay()
 {
 	Super::BeginPlay();
-	
+	BlasterPlayerController = Cast<ABlasterPlayerController>(Controller);
+	UpdateHealth();
+	if(HasAuthority())
+	{
+		OnTakeAnyDamage.AddDynamic(this, &ThisClass::ReceiveDamage);
+	}
 }
 
 void ABlasterCharacter::PostInitializeComponents()
@@ -83,14 +89,32 @@ void ABlasterCharacter::PostInitializeComponents()
 void ABlasterCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-	if(GetLocalRole() > ROLE_SimulatedProxy)
+	if(GetLocalRole() > ROLE_SimulatedProxy && IsLocallyControlled())
 	{
 		AimOffset(DeltaTime);
-	}else{
-		SimProxyTurn();
+	}else
+	{
+		TimeSinceLastMovementReplication+=DeltaTime;
+		if(TimeSinceLastMovementReplication > 0.25f)
+		{
+			OnRep_ReplicatedMovement();
+		}
+		CalculateAO_Pitch();
 	}
-	
 	HideCharacter();
+}
+
+void ABlasterCharacter::OnRep_ReplicatedMovement()
+{
+	Super::OnRep_ReplicatedMovement();
+	SimProxyTurn();		// 除了代理的Movement被复制的时候调用SimProxyTurn，我们还想定时的去调用它
+	TimeSinceLastMovementReplication = 0.f;
+}
+
+void ABlasterCharacter::Elim()
+{
+	bElimmed = true;
+	PlayElimMontage();
 }
 
 void ABlasterCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -122,7 +146,15 @@ void ABlasterCharacter::PlayFireMontage(bool bAiming)
 		FName SectionName = bAiming ? TEXT("RifleAim") : TEXT("RifleHip");
 		OurAnimInstance->Montage_JumpToSection(SectionName);
 	}
-	
+}
+
+void ABlasterCharacter::PlayElimMontage()
+{
+	UAnimInstance* OurAnimInstance = GetMesh()->GetAnimInstance();
+	if(OurAnimInstance && ElimMontage)
+	{
+		OurAnimInstance->Montage_Play(ElimMontage);
+	}
 }
 
 void ABlasterCharacter::PlayHitReactMontage()
@@ -136,10 +168,42 @@ void ABlasterCharacter::PlayHitReactMontage()
 	}
 }
 
-void ABlasterCharacter::MulticastHit_Implementation()
+void ABlasterCharacter::ReceiveDamage(AActor* DamageActor, float Damage, const UDamageType* DamageType,
+	AController* InstigatorController, AActor* DamageCauser)
 {
+	Health = FMath::Clamp(Health-Damage, 0.f, MaxHealth);
+	UpdateHealth();
+	PlayHitReactMontage();
+	if(Health<=0.f){
+		ABlasterGameMode* BlasterGameMode =GetWorld()->GetAuthGameMode<ABlasterGameMode>();
+		if(BlasterGameMode)
+		{
+			BlasterPlayerController = BlasterPlayerController==nullptr ? Cast<ABlasterPlayerController>(Controller) : BlasterPlayerController;
+			ABlasterPlayerController* AttackerController = Cast<ABlasterPlayerController>(InstigatorController);
+			BlasterGameMode->PlayerEliminated(this, BlasterPlayerController, AttackerController);
+		}
+	}
+}
+
+void ABlasterCharacter::OnRep_Health()
+{
+	UpdateHealth();
 	PlayHitReactMontage();
 }
+
+void ABlasterCharacter::UpdateHealth()
+{
+	BlasterPlayerController = (BlasterPlayerController==nullptr) ? Cast<ABlasterPlayerController>(Controller) : BlasterPlayerController;	
+	if(BlasterPlayerController)
+	{
+		BlasterPlayerController->SetHUDHealth(Health, MaxHealth);
+	}
+}
+
+// void ABlasterCharacter::MulticastHit_Implementation()
+// {
+// 	PlayHitReactMontage();
+// }
 
 void ABlasterCharacter::Jump()
 {
@@ -251,12 +315,16 @@ void ABlasterCharacter::FireButtonReleased()
 	}
 }
 
+float ABlasterCharacter::CalculateSpeed()
+{
+	FVector Velocity = GetVelocity();
+	Velocity.Z = 0.f;
+	return Velocity.Size(); // 模长Sqrt(X*X + Y*Y + Z*Z);
+}
 void ABlasterCharacter::AimOffset(float DeltaTime)
 {
 	if(Combat && !Combat->EquippedWeapon)return; 
-	FVector Velocity = GetVelocity();
-	Velocity.Z = 0.f;
-	float Speed = Velocity.Size(); // 模长Sqrt(X*X + Y*Y + Z*Z);
+	float Speed = CalculateSpeed();
 	bool bIsInAir = GetCharacterMovement()->IsFalling();
 	if(FMath::Abs(Speed) <= 1e-6 && !bIsInAir)	// 站着不动，并且没有跳跃
 	{
@@ -282,6 +350,11 @@ void ABlasterCharacter::AimOffset(float DeltaTime)
 	// 压缩的时候将Yaw和Pitch [0, 360)-->[0, 65536)
 	// 注意都是正数，所以当负数映射的时候，由于做了Mask会切断不在[0, 360)范围内的数
 	// 当在服务端对客户端的角度进行解压缩的时候[0, 65536)-->[0, 360)，这就是[0, -90]的角度变成了[360, 270]的原因
+	CalculateAO_Pitch();
+}
+
+void ABlasterCharacter::CalculateAO_Pitch()
+{
 	AimOffset_Pitch = GetBaseAimRotation().Pitch;
 	
 	if(AimOffset_Pitch > 90.f && !IsLocallyControlled())
@@ -290,7 +363,6 @@ void ABlasterCharacter::AimOffset(float DeltaTime)
 		FVector2d InRange(270.f, 360.f);
 		FVector2d OutRange(-90.f, 0.f);
 		AimOffset_Pitch = FMath::GetMappedRangeValueClamped(InRange, OutRange, AimOffset_Pitch);
-		
 	}
 }
 
@@ -298,6 +370,31 @@ void ABlasterCharacter::SimProxyTurn()
 {
 	if(!Combat || !Combat->EquippedWeapon)return;
 	bRotateRootBone = false;
+	float Speed = CalculateSpeed();
+	bool bIsInAir = GetCharacterMovement()->IsFalling();
+	if(Speed > 1e-6 || bIsInAir)
+	{
+		TurningState = ETurningInPlace::ETIP_NotTurning;
+		return;
+	}
+	ProxyRotationLastFrame = ProxyRotation;
+	ProxyRotation = GetActorRotation();
+	ProxyYaw = UKismetMathLibrary::NormalizedDeltaRotator(ProxyRotation, ProxyRotationLastFrame).Yaw;
+	if(FMath::Abs(ProxyYaw) > TurnThreshold)
+	{
+		if(ProxyYaw > TurnThreshold)
+		{
+			TurningState =  ETurningInPlace::ETIP_Right;
+		}else if(ProxyYaw < -TurnThreshold)
+		{
+			TurningState =  ETurningInPlace::ETIP_Left;
+		}else
+		{
+			TurningState = ETurningInPlace::ETIP_NotTurning;
+		}
+		return;
+	}
+	TurningState = ETurningInPlace::ETIP_NotTurning;
 }
 
 void ABlasterCharacter::SetTurnInPlace(float DeltaTime)

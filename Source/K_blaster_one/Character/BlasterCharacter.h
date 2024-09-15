@@ -26,8 +26,14 @@ public:
 
 	void PlayFireMontage(bool bAiming);
 	
-	UFUNCTION(NetMulticast, Unreliable)
-	void MulticastHit();
+	void PlayElimMontage();
+	
+	// UFUNCTION(NetMulticast, Unreliable)
+	// void MulticastHit();
+	
+	//客户端在其他客户端上的代理模拟无需每次Tick都调用SimProxyTurn，我们在它的Movement发生变化并被复制的时候才调用
+	virtual void OnRep_ReplicatedMovement() override;
+	void Elim();
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
@@ -43,10 +49,14 @@ protected:
 	void AimButtonReleased();
 	void FireButtonPressed();
 	void FireButtonReleased();
-	
+	void CalculateAO_Pitch();
+
 	void AimOffset(float DeltaTime);
 	void SimProxyTurn();
 	void PlayHitReactMontage();
+	UFUNCTION()
+	void ReceiveDamage(AActor* DamageActor, float Damage, const UDamageType* DamageType, class AController* InstigatorController, AActor* DamageCauser);
+	void UpdateHealth();
 private:
 	UPROPERTY(VisibleAnywhere, Category = K_Camera)
 	class USpringArmComponent* CameraBoom;
@@ -83,14 +93,39 @@ private:
 	class UAnimMontage* FireMontage;
 
 	UPROPERTY(EditAnywhere, Category = K_Combat)
-	class UAnimMontage* HitReactMontage;
+	UAnimMontage* HitReactMontage;
+
+	UPROPERTY(EditAnywhere, Category = K_Combat)
+	UAnimMontage* ElimMontage;
 	
 	void HideCharacter();
 
 	UPROPERTY(EditAnywhere)
 	float CameraDistance = 150.f;
 
-	bool bRotateRootBone; 
+	bool bRotateRootBone;
+
+	float TurnThreshold = 0.5f;
+	float ProxyYaw;
+	FRotator ProxyRotationLastFrame;
+	FRotator ProxyRotation;
+
+	float TimeSinceLastMovementReplication;
+	float CalculateSpeed();
+
+	//Player Health
+	UPROPERTY(EditAnywhere, Category = "Player Stats")
+	float MaxHealth = 100.f;
+	
+	UPROPERTY(ReplicatedUsing = OnRep_Health, VisibleAnywhere, Category = "Player Stats")
+	float Health = 100.f;
+	
+	UFUNCTION()
+	void OnRep_Health();
+
+	class ABlasterPlayerController* BlasterPlayerController;
+	
+	bool bElimmed = false;
 public:
 	// 由于重叠的检测只在服务器上，所以客户端上要想要显示重叠就需要把服务器的变量值复制给客户端。
 	// 一旦角色和武器重叠时，就把OverlappingWeapon变量复制到所有客户端的角色上，复制只在变量改变的时候起作用，并不会每帧都更新
@@ -105,5 +140,6 @@ public:
 	AWeaponBase* GetEquippedWeapon();
 	FVector_NetQuantize GetHitTarget();
 	FORCEINLINE bool ShouldRotateRootBone() const {return bRotateRootBone;}
+	FORCEINLINE bool IsElimmed() const {return bElimmed;}
 };
 

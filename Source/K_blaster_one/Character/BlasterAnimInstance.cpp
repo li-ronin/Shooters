@@ -42,7 +42,8 @@ void UBlasterAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	TurningInPlace = OurCharacter->GetTurningState();
 
 	bRotateRootBone = OurCharacter->ShouldRotateRootBone();
-	
+
+	bElimmed = OurCharacter->IsElimmed();
 	// Yaw和Lean 当移动时的方向角度，用来控制播放哪个移动动画（Blend space）
 	// 偏航角为角色的前进方向和瞄准方向的差,客户端和服务器上都有该变量无须担心复制
 	FRotator AimRotation = OurCharacter->GetBaseAimRotation();	// 世界的东南西北偏航角

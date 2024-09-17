@@ -113,6 +113,12 @@ void UCombatComponent::OnRep_EquippedWeapon()	// 复制给客户端时的处理
 {
 	if(EquippedWeapon && Character)
 	{
+		EquippedWeapon->SetWeaponState(EWeaponState::EWS_Equipped);
+		const USkeletalMeshSocket* HandSocket = Character->GetMesh()->GetSocketByName(FName("RightHandSocket"));
+		if(HandSocket)
+		{
+			HandSocket->AttachActor(EquippedWeapon, Character->GetMesh());
+		}
 		//  这是客户端的Character
 		Character->bUseControllerRotationYaw = true;
 		Character->GetCharacterMovement()->bOrientRotationToMovement = false;	// 拿到武器之后让角色朝向镜头旋转方向, 而不是移动方向

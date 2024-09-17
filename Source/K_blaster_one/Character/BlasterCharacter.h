@@ -6,6 +6,7 @@
 #include "GameFramework/Character.h"
 #include "K_blaster_one/BlasterType/TurningInPlace.h"
 #include "K_blaster_one/Interfaces/CrosshairsInterface.h"
+#include "Components/TimelineComponent.h"
 #include "BlasterCharacter.generated.h"
 
 UCLASS()
@@ -33,7 +34,11 @@ public:
 	
 	//客户端在其他客户端上的代理模拟无需每次Tick都调用SimProxyTurn，我们在它的Movement发生变化并被复制的时候才调用
 	virtual void OnRep_ReplicatedMovement() override;
+
 	void Elim();
+	
+	UFUNCTION(NetMulticast, Reliable)
+	void MulticastElim();
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
@@ -126,6 +131,36 @@ private:
 	class ABlasterPlayerController* BlasterPlayerController;
 	
 	bool bElimmed = false;
+
+	FTimerHandle ElimTimer;
+
+	UPROPERTY(EditDefaultsOnly)
+	float ElimDelay = 3.f;
+	
+	void ElimTimerFinished();	// Callback函数
+
+	/**
+	 * Dissolve Effect
+	 */
+	UPROPERTY(VisibleAnywhere)
+	UTimelineComponent* DissolveTimeline;
+	
+	FOnTimelineFloat DissolveTrack;	// Delegate类
+
+	UPROPERTY(EditAnywhere)
+	UCurveFloat* DissolveCurve;
+	
+	UFUNCTION()
+	void UpdateDissolveMaterial(float DissolveValue);
+
+	void StartDissolve();
+
+	// 可以在运行时更改的动态材质实例
+	UPROPERTY(VisibleAnywhere, Category = Elim)
+	UMaterialInstanceDynamic* DynamicDissolveMaterial;
+	// 蓝图上设置的材质实例，动态材质实例要使用它
+	UPROPERTY(EditAnywhere, Category = Elim)
+	UMaterialInstance* DissolveMaterial;
 public:
 	// 由于重叠的检测只在服务器上，所以客户端上要想要显示重叠就需要把服务器的变量值复制给客户端。
 	// 一旦角色和武器重叠时，就把OverlappingWeapon变量复制到所有客户端的角色上，复制只在变量改变的时候起作用，并不会每帧都更新

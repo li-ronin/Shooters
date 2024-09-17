@@ -13,10 +13,12 @@
 #include "K_blaster_one/PlayerController/BlasterPlayerController.h"
 #include "K_blaster_one/K_blaster_one.h"
 #include "K_blaster_one/GameMode/BlasterGameMode.h"
+#include "TimerManager.h"
 
 ABlasterCharacter::ABlasterCharacter()
 {
 	PrimaryActorTick.bCanEverTick = true;
+	SpawnCollisionHandlingMethod = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
 	// 摄像机弹簧臂
 	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
 	CameraBoom->SetupAttachment(GetMesh());
@@ -53,7 +55,9 @@ ABlasterCharacter::ABlasterCharacter()
 	NetUpdateFrequency = 66.f;
 	MinNetUpdateFrequency = 33.f;
 	// Server Net Tick Rate在配置文件里面设置
-	
+
+	// 
+	DissolveTimeline = CreateDefaultSubobject<UTimelineComponent>(TEXT("DissolveTimeline"));
 }
 
 void ABlasterCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -104,19 +108,6 @@ void ABlasterCharacter::Tick(float DeltaTime)
 	HideCharacter();
 }
 
-void ABlasterCharacter::OnRep_ReplicatedMovement()
-{
-	Super::OnRep_ReplicatedMovement();
-	SimProxyTurn();		// 除了代理的Movement被复制的时候调用SimProxyTurn，我们还想定时的去调用它
-	TimeSinceLastMovementReplication = 0.f;
-}
-
-void ABlasterCharacter::Elim()
-{
-	bElimmed = true;
-	PlayElimMontage();
-}
-
 void ABlasterCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
@@ -134,6 +125,83 @@ void ABlasterCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 	PlayerInputComponent->BindAction("Aim", IE_Released, this, &ThisClass::AimButtonReleased);
 	PlayerInputComponent->BindAction("Fire", IE_Pressed, this, &ThisClass::FireButtonPressed);
 	PlayerInputComponent->BindAction("Fire", IE_Released, this, &ThisClass::FireButtonReleased);
+}
+
+void ABlasterCharacter::OnRep_ReplicatedMovement()
+{
+	Super::OnRep_ReplicatedMovement();
+	SimProxyTurn();		// 除了代理的Movement被复制的时候调用SimProxyTurn，我们还想定时的去调用它
+	TimeSinceLastMovementReplication = 0.f;
+}
+
+void ABlasterCharacter::Elim()
+{
+	if(Combat && Combat->EquippedWeapon)
+	{
+		Combat->EquippedWeapon->Dropped();	
+	}
+	
+	MulticastElim();
+	GetWorldTimerManager().SetTimer(
+		ElimTimer,
+		this,
+		&ThisClass::ElimTimerFinished,
+		ElimDelay
+		);
+}
+
+void ABlasterCharacter::MulticastElim_Implementation()
+{
+	bElimmed = true;
+	PlayElimMontage();
+	// 身体消失效果
+	if(DissolveMaterial)
+	{
+		DynamicDissolveMaterial = UMaterialInstanceDynamic::Create(DissolveMaterial, this);
+		GetMesh()->SetMaterial(0, DynamicDissolveMaterial);
+		DynamicDissolveMaterial->SetScalarParameterValue(TEXT("Dissolve"), 0.55f);
+		DynamicDissolveMaterial->SetScalarParameterValue(TEXT("Glow"), 200.f);
+		StartDissolve();
+	}
+	// Disable Player Movement
+	GetCharacterMovement()->DisableMovement();
+	GetCharacterMovement()->StopMovementImmediately();
+	if(BlasterPlayerController)
+	{
+		DisableInput(BlasterPlayerController);
+	}
+	// Disable Player Collision
+	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	GetMesh()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+}
+
+void ABlasterCharacter::ElimTimerFinished()
+{
+	// Timer Finish Respawn Character
+	ABlasterGameMode* BlasterGameMode =GetWorld()->GetAuthGameMode<ABlasterGameMode>();
+	if(BlasterGameMode)
+	{
+		BlasterGameMode->RequestRespawn(this, Controller);
+	}
+}
+
+void ABlasterCharacter::UpdateDissolveMaterial(float DissolveValue)
+{
+	if(DynamicDissolveMaterial)
+	{
+		DynamicDissolveMaterial->SetScalarParameterValue(TEXT("Dissolve"), DissolveValue);
+	}
+}
+
+void ABlasterCharacter::StartDissolve()
+{
+	DissolveTrack.BindDynamic(this, &ABlasterCharacter::UpdateDissolveMaterial); // DissolveTrack代理绑定回调函数
+	if(DissolveCurve && DissolveTimeline)
+	{
+		DissolveTimeline->AddInterpFloat(DissolveCurve, DissolveTrack); // Timeline添加曲线和Delegate，一旦开始播放就会通知Delegate的回调函数
+		DissolveTimeline->Play();
+		
+	}
 }
 
 void ABlasterCharacter::PlayFireMontage(bool bAiming)
@@ -174,8 +242,8 @@ void ABlasterCharacter::ReceiveDamage(AActor* DamageActor, float Damage, const U
 	Health = FMath::Clamp(Health-Damage, 0.f, MaxHealth);
 	UpdateHealth();
 	PlayHitReactMontage();
-	if(Health<=0.f){
-		ABlasterGameMode* BlasterGameMode =GetWorld()->GetAuthGameMode<ABlasterGameMode>();
+	if(Health <= 0.f){
+		ABlasterGameMode* BlasterGameMode = GetWorld()->GetAuthGameMode<ABlasterGameMode>();
 		if(BlasterGameMode)
 		{
 			BlasterPlayerController = BlasterPlayerController==nullptr ? Cast<ABlasterPlayerController>(Controller) : BlasterPlayerController;
@@ -199,11 +267,6 @@ void ABlasterCharacter::UpdateHealth()
 		BlasterPlayerController->SetHUDHealth(Health, MaxHealth);
 	}
 }
-
-// void ABlasterCharacter::MulticastHit_Implementation()
-// {
-// 	PlayHitReactMontage();
-// }
 
 void ABlasterCharacter::Jump()
 {

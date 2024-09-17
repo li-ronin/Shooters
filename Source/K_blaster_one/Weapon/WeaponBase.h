@@ -30,7 +30,8 @@ public:
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;	// 在该函数中注册要复制的变量
 
 	virtual void Fire(const FVector& HitTarget);
-	
+
+	virtual void Dropped();
 protected:
 	virtual void BeginPlay() override;
 

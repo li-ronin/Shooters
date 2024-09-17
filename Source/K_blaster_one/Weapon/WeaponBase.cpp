@@ -1,4 +1,6 @@
 #include "WeaponBase.h"
+
+#include "AudioDevice.h"
 #include "Components/SphereComponent.h"
 #include "Components/WidgetComponent.h"
 #include "Components/SkeletalMeshComponent.h"
@@ -7,6 +9,7 @@
 #include "Animation/AnimationAsset.h"
 #include "Casting.h"
 #include "Engine/SkeletalMeshSocket.h"
+#include "Windows/WindowsApplication.h"
 
 AWeaponBase::AWeaponBase()
 {
@@ -46,6 +49,12 @@ void AWeaponBase::BeginPlay()
 	}
 }
 
+void AWeaponBase::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+	
+}
+
 void AWeaponBase::OnSphereOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
 	UPrimitiveComponent* OtherComponent, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
@@ -66,17 +75,6 @@ void AWeaponBase::OnSphereEndOverlap(UPrimitiveComponent* OverlappedComponent, A
 	}
 }
 
-void AWeaponBase::OnRep_WeaponState() // 客户端执行
-{
-	switch (WeaponState)
-	{
-		case EWeaponState::EWS_Equipped:
-			ShowPickupWidget(false);
-			AreaSphere->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-			break;
-	}
-}
-
 void AWeaponBase::SetWeaponState(EWeaponState state)
 {
 	WeaponState = state;
@@ -85,14 +83,39 @@ void AWeaponBase::SetWeaponState(EWeaponState state)
 	case EWeaponState::EWS_Equipped:
 		ShowPickupWidget(false);
 		AreaSphere->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		WeaponMesh->SetSimulatePhysics(false);	
+		WeaponMesh->SetEnableGravity(false);
+		WeaponMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		break;
+	case EWeaponState::EWS_Dropped:
+		if(HasAuthority())
+		{
+			AreaSphere->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+		}
+		WeaponMesh->SetSimulatePhysics(true);	
+		WeaponMesh->SetEnableGravity(true);
+		WeaponMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 		break;
 	}
 }
 
-void AWeaponBase::Tick(float DeltaTime)
+void AWeaponBase::OnRep_WeaponState() // 客户端执行
 {
-	Super::Tick(DeltaTime);
-	
+	switch (WeaponState)
+	{
+	case EWeaponState::EWS_Equipped:
+		ShowPickupWidget(false);
+		AreaSphere->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		WeaponMesh->SetSimulatePhysics(false);	
+		WeaponMesh->SetEnableGravity(false);
+		WeaponMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		break;
+	case EWeaponState::EWS_Dropped:
+		WeaponMesh->SetSimulatePhysics(true);	
+		WeaponMesh->SetEnableGravity(true);
+		WeaponMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+		break;
+	}
 }
 
 void AWeaponBase::ShowPickupWidget(bool bShowWidget)
@@ -130,4 +153,12 @@ void AWeaponBase::Fire(const FVector& HitTarget)
 		}
 	}
 	
+}
+
+void AWeaponBase::Dropped()
+{
+	SetWeaponState(EWeaponState::EWS_Dropped);
+	FDetachmentTransformRules DetachRules(EDetachmentRule::KeepWorld, true);
+	WeaponMesh->DetachFromComponent(DetachRules);
+	SetOwner(nullptr);
 }

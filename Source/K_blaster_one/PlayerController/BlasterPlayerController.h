@@ -14,7 +14,8 @@ class K_BLASTER_ONE_API ABlasterPlayerController : public APlayerController
 	GENERATED_BODY()
 public:
 	void SetHUDHealth(float Health, float MaxHealth);
-
+	void SetHUDScore(float ScoreAmount);
+	void OnPossess(APawn* aPawn) override;
 protected:
 	virtual void BeginPlay() override;
 

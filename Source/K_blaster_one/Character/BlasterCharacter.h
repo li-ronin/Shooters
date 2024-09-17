@@ -24,7 +24,9 @@ public:
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;	// 在该函数中注册要复制的变量
 
 	virtual void PostInitializeComponents() override;
-
+	
+	virtual void Destroyed() override;
+	
 	void PlayFireMontage(bool bAiming);
 	
 	void PlayElimMontage();
@@ -62,6 +64,7 @@ protected:
 	UFUNCTION()
 	void ReceiveDamage(AActor* DamageActor, float Damage, const UDamageType* DamageType, class AController* InstigatorController, AActor* DamageCauser);
 	void UpdateHealth();
+	void PollInit();
 private:
 	UPROPERTY(VisibleAnywhere, Category = K_Camera)
 	class USpringArmComponent* CameraBoom;
@@ -161,6 +164,18 @@ private:
 	// 蓝图上设置的材质实例，动态材质实例要使用它
 	UPROPERTY(EditAnywhere, Category = Elim)
 	UMaterialInstance* DissolveMaterial;
+
+	// Elim Robot
+	UPROPERTY(EditAnywhere)
+	UParticleSystem* ElimBotEffect;
+
+	UPROPERTY(VisibleAnywhere)
+	UParticleSystemComponent* ElimBotComponent;
+
+	UPROPERTY(EditAnywhere)
+	class USoundCue* ElimBotSound;
+
+	class ABlasterPlayerState* BlasterPlayerState;
 public:
 	// 由于重叠的检测只在服务器上，所以客户端上要想要显示重叠就需要把服务器的变量值复制给客户端。
 	// 一旦角色和武器重叠时，就把OverlappingWeapon变量复制到所有客户端的角色上，复制只在变量改变的时候起作用，并不会每帧都更新
@@ -176,5 +191,7 @@ public:
 	FVector_NetQuantize GetHitTarget();
 	FORCEINLINE bool ShouldRotateRootBone() const {return bRotateRootBone;}
 	FORCEINLINE bool IsElimmed() const {return bElimmed;}
+	FORCEINLINE float GetHealth() const {return Health;}
+	FORCEINLINE float GetMaxHealth() const {return MaxHealth;}
 };
 

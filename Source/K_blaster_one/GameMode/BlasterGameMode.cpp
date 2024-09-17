@@ -7,14 +7,22 @@
 #include "Kismet/GameplayStatics.h"
 #include "K_blaster_one/PlayerController/BlasterPlayerController.h"
 #include "K_blaster_one/Character/BlasterCharacter.h"
+#include "K_blaster_one/PlayerState/BlasterPlayerState.h"
 
 void ABlasterGameMode::PlayerEliminated(ABlasterCharacter* EliminatedCharacter,
-	ABlasterPlayerController* VictimController, ABlasterPlayerController* AttackerController)
+                                        ABlasterPlayerController* VictimController, ABlasterPlayerController* AttackerController)
 {
+	ABlasterPlayerState* AttackerPlayerState = AttackerController ? Cast<ABlasterPlayerState>(AttackerController->PlayerState) : nullptr;
+	ABlasterPlayerState* VictimPlayerState = VictimController ? Cast<ABlasterPlayerState>(VictimController->PlayerState) : nullptr;
+	
+	if(AttackerPlayerState && AttackerPlayerState!=VictimPlayerState)
+	{
+		// UE_LOG(LogTemp, Warning, TEXT("+1!"))
+		AttackerPlayerState->AddToScore(1.f);
+	}
 	// GameMode Only On the Server
 	if(EliminatedCharacter)
 	{
-		EliminatedCharacter->Elim();
 		EliminatedCharacter->Elim();
 	}
 	

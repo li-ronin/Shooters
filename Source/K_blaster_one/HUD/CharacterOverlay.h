@@ -23,4 +23,9 @@ public:
 	UPROPERTY(meta = (BindWidget))
 	UTextBlock* ScoreAmount;
 	
+	UPROPERTY(meta = (BindWidget))
+	UTextBlock* DefeatAmount;
+
+	UPROPERTY(meta = (BindWidget))
+	UTextBlock* WeaponAmmoAmount;
 };

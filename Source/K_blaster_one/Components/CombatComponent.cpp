@@ -230,7 +230,8 @@ void UCombatComponent::ServerSetAming_Implementation(bool bAming)
 
 void UCombatComponent::EquipWeapon(AWeaponBase* WeaponToEquipped)
 {
-	if(!Character || !WeaponToEquipped) return;	
+	if(!Character || !WeaponToEquipped) return;
+	if(EquippedWeapon) EquippedWeapon->Dropped();
 	EquippedWeapon = WeaponToEquipped;
 	EquippedWeapon->SetWeaponState(EWeaponState::EWS_Equipped);
 	const USkeletalMeshSocket* HandSocket = Character->GetMesh()->GetSocketByName(FName("RightHandSocket"));
@@ -239,7 +240,7 @@ void UCombatComponent::EquipWeapon(AWeaponBase* WeaponToEquipped)
 		HandSocket->AttachActor(EquippedWeapon, Character->GetMesh());
 	}
 	EquippedWeapon->SetOwner(Character);
-	
+	EquippedWeapon->SetHUDAmmo();
 	Character->bUseControllerRotationYaw = true;
 	Character->GetCharacterMovement()->bOrientRotationToMovement = false;	// 拿到武器之后让角色朝向镜头旋转方向, 而不是移动方向
 }

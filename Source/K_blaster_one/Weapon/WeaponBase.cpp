@@ -1,10 +1,10 @@
 #include "WeaponBase.h"
 
-#include "AudioDevice.h"
 #include "Components/SphereComponent.h"
 #include "Components/WidgetComponent.h"
 #include "Components/SkeletalMeshComponent.h"
-#include "../Character/BlasterCharacter.h"
+#include "K_blaster_one/Character/BlasterCharacter.h"
+#include "K_blaster_one/PlayerController/BlasterPlayerController.h"
 #include "Net/UnrealNetwork.h"
 #include "Animation/AnimationAsset.h"
 #include "Casting.h"
@@ -52,7 +52,13 @@ void AWeaponBase::BeginPlay()
 void AWeaponBase::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-	
+}
+
+void AWeaponBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	DOREPLIFETIME(AWeaponBase, WeaponState);
+	DOREPLIFETIME(AWeaponBase, Ammo);
 }
 
 void AWeaponBase::OnSphereOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
@@ -118,6 +124,30 @@ void AWeaponBase::OnRep_WeaponState() // 客户端执行
 	}
 }
 
+void AWeaponBase::SpendRound()
+{
+	--Ammo;
+	SetHUDAmmo();
+}
+
+void AWeaponBase::OnRep_Ammo()
+{
+	SetHUDAmmo();
+}
+
+void AWeaponBase::OnRep_Owner()
+{
+	Super::OnRep_Owner();
+	if(Owner == nullptr)
+	{
+		BlasterOwnerCharacter = nullptr;
+		BlasterOwnerController = nullptr;
+	}else
+	{
+		SetHUDAmmo();	
+	}
+}
+
 void AWeaponBase::ShowPickupWidget(bool bShowWidget)
 {
 	if(PickupWidget)
@@ -126,11 +156,7 @@ void AWeaponBase::ShowPickupWidget(bool bShowWidget)
 	}
 }
 
-void AWeaponBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
-{
-	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-	DOREPLIFETIME(AWeaponBase, WeaponState);
-}
+
 
 void AWeaponBase::Fire(const FVector& HitTarget)
 {
@@ -152,7 +178,7 @@ void AWeaponBase::Fire(const FVector& HitTarget)
 			}
 		}
 	}
-	
+	SpendRound(); // 子弹-1
 }
 
 void AWeaponBase::Dropped()
@@ -161,4 +187,20 @@ void AWeaponBase::Dropped()
 	FDetachmentTransformRules DetachRules(EDetachmentRule::KeepWorld, true);
 	WeaponMesh->DetachFromComponent(DetachRules);
 	SetOwner(nullptr);
+	BlasterOwnerCharacter = nullptr;
+	BlasterOwnerController = nullptr;
+}
+
+
+void AWeaponBase::SetHUDAmmo()
+{
+	BlasterOwnerCharacter = BlasterOwnerCharacter==nullptr ? Cast<ABlasterCharacter>(GetOwner()) : BlasterOwnerCharacter;
+	if(BlasterOwnerCharacter)
+	{
+		BlasterOwnerController = BlasterOwnerController==nullptr ? Cast<ABlasterPlayerController>(BlasterOwnerCharacter->Controller) : BlasterOwnerController;
+		if(BlasterOwnerController)
+		{
+			BlasterOwnerController->SetHUDWeaponAmmo(Ammo);
+		}
+	}
 }

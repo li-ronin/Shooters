@@ -174,7 +174,8 @@ private:
 
 	UPROPERTY(EditAnywhere)
 	class USoundCue* ElimBotSound;
-
+	
+	UPROPERTY()
 	class ABlasterPlayerState* BlasterPlayerState;
 public:
 	// 由于重叠的检测只在服务器上，所以客户端上要想要显示重叠就需要把服务器的变量值复制给客户端。

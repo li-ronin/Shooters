@@ -15,10 +15,13 @@ class K_BLASTER_ONE_API ABlasterPlayerController : public APlayerController
 public:
 	void SetHUDHealth(float Health, float MaxHealth);
 	void SetHUDScore(float ScoreAmount);
+	void SetHUDDefeat(int32 DefeatAmount);
+	void SetHUDWeaponAmmo(int32 DefeatAmount);
 	void OnPossess(APawn* aPawn) override;
 protected:
 	virtual void BeginPlay() override;
 
 private:
+	UPROPERTY()
 	class ABlasterHUD* BlasterHUD;
 };

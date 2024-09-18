@@ -28,10 +28,16 @@ public:
 	void ShowPickupWidget(bool bShowWidget);
 	
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;	// 在该函数中注册要复制的变量
-
+	
+	virtual void OnRep_Owner() override;
+	
+	void SetHUDAmmo();
+	
 	virtual void Fire(const FVector& HitTarget);
 
 	virtual void Dropped();
+
+	
 protected:
 	virtual void BeginPlay() override;
 
@@ -73,6 +79,23 @@ private:
 
 	UPROPERTY(EditAnywhere)
 	TSubclassOf<class ACasting> CastingClass;
+
+	UPROPERTY(EditAnywhere, ReplicatedUsing = OnRep_Ammo)
+	int32 Ammo;	// 子弹数量
+
+	UFUNCTION()
+	void OnRep_Ammo();
+
+	void SpendRound();
+	
+	UPROPERTY(EditAnywhere)
+	int32 MagCapacity;
+
+	UPROPERTY()
+	class ABlasterCharacter* BlasterOwnerCharacter;
+
+	UPROPERTY()
+	class ABlasterPlayerController* BlasterOwnerController;
 	
 public:
 	void SetWeaponState(EWeaponState state);

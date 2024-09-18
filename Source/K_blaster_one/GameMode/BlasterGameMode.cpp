@@ -15,10 +15,11 @@ void ABlasterGameMode::PlayerEliminated(ABlasterCharacter* EliminatedCharacter,
 	ABlasterPlayerState* AttackerPlayerState = AttackerController ? Cast<ABlasterPlayerState>(AttackerController->PlayerState) : nullptr;
 	ABlasterPlayerState* VictimPlayerState = VictimController ? Cast<ABlasterPlayerState>(VictimController->PlayerState) : nullptr;
 	
-	if(AttackerPlayerState && AttackerPlayerState!=VictimPlayerState)
+	if(AttackerPlayerState && VictimPlayerState && AttackerPlayerState!=VictimPlayerState)
 	{
 		// UE_LOG(LogTemp, Warning, TEXT("+1!"))
 		AttackerPlayerState->AddToScore(1.f);
+		VictimPlayerState->AddToDefeat(1);
 	}
 	// GameMode Only On the Server
 	if(EliminatedCharacter)

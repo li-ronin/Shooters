@@ -48,6 +48,34 @@ void ABlasterPlayerController::SetHUDScore(float ScoreAmount)
 	}
 }
 
+void ABlasterPlayerController::SetHUDDefeat(int32 DefeatAmount)
+{
+	BlasterHUD = (BlasterHUD==nullptr) ? Cast<ABlasterHUD>(GetHUD()) : BlasterHUD;
+	
+	bool bHUDVaild = BlasterHUD &&
+		BlasterHUD->CharacterOverlay &&
+		BlasterHUD->CharacterOverlay->DefeatAmount;
+	if(bHUDVaild)
+	{
+		FString DefeatAmountText = FString::Printf(TEXT("%d"), DefeatAmount);
+		BlasterHUD->CharacterOverlay->DefeatAmount->SetText(FText::FromString(DefeatAmountText));
+	}
+}
+
+void ABlasterPlayerController::SetHUDWeaponAmmo(int32 Ammo)
+{
+	BlasterHUD = (BlasterHUD==nullptr) ? Cast<ABlasterHUD>(GetHUD()) : BlasterHUD;
+	
+	bool bHUDVaild = BlasterHUD &&
+		BlasterHUD->CharacterOverlay &&
+		BlasterHUD->CharacterOverlay->WeaponAmmoAmount;
+	if(bHUDVaild)
+	{
+		FString AmmoAmountText = FString::Printf(TEXT("%d/50"), Ammo);
+		BlasterHUD->CharacterOverlay->WeaponAmmoAmount->SetText(FText::FromString(AmmoAmountText));
+	}
+}
+
 void ABlasterPlayerController::OnPossess(APawn* aPawn)
 {
 	Super::OnPossess(aPawn);

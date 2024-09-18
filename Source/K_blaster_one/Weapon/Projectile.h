@@ -33,6 +33,7 @@ private:
 	UPROPERTY(EditAnywhere)
 	class UParticleSystem* ProjectleTracer;
 
+	UPROPERTY()
 	class UParticleSystemComponent* TracerComponent;
 
 	UPROPERTY(EditAnywhere)

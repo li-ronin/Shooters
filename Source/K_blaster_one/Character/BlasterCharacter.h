@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
 #include "K_blaster_one/BlasterType/TurningInPlace.h"
+#include "K_blaster_one/BlasterType/CombatState.h"
 #include "K_blaster_one/Interfaces/CrosshairsInterface.h"
 #include "Components/TimelineComponent.h"
 #include "BlasterCharacter.generated.h"
@@ -84,7 +85,7 @@ private:
 	UFUNCTION()
 	void OnRep_OverlappingWeapon(AWeaponBase* LastWeapon);
 
-	UPROPERTY(VisibleAnywhere)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	class UCombatComponent* Combat;
 
 	UFUNCTION(Server, Reliable)
@@ -200,5 +201,6 @@ public:
 	FORCEINLINE bool IsElimmed() const {return bElimmed;}
 	FORCEINLINE float GetHealth() const {return Health;}
 	FORCEINLINE float GetMaxHealth() const {return MaxHealth;}
+	ECombatState GetCombatState() const;
 };
 

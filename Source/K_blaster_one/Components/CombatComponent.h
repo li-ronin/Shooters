@@ -27,6 +27,9 @@ public:
 	void EquipWeapon(class AWeaponBase* WeaponToEquipped);
 
 	void Reload();
+
+	UFUNCTION(BlueprintCallable)
+	void FinishReloading();
 protected:
 	virtual void BeginPlay() override;
 
@@ -50,6 +53,8 @@ protected:
 
 	UFUNCTION(Server, Reliable)
 	void ServerReload();
+
+	void HandleReload();
 private:
 	UPROPERTY()
 	class ABlasterCharacter* Character;
@@ -113,7 +118,11 @@ private:
 	
 	void InitializeCarriedAmmo();
 
-	ECombatState CombatState;
+	UPROPERTY(ReplicatedUsing = OnRep_CombatState)
+	ECombatState CombatState = ECombatState::ECS_Unoccupied;
+
+	UFUNCTION()
+	void OnRep_CombatState();
 public:	
 
 		

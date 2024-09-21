@@ -3,7 +3,7 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "K_blaster_one/Weapon/WeaponBase.h"
-
+#include "K_blaster_one/BlasterType/CombatState.h"
 
 void UBlasterAnimInstance::NativeInitializeAnimation()
 {
@@ -88,5 +88,5 @@ void UBlasterAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 		// DrawDebugLine(GetWorld(), MuzzleTipTransform.GetLocation(), MuzzleTipTransform.GetLocation() + Muzzle_X*100.f, FColor::Red);
 		// DrawDebugLine(GetWorld(), MuzzleTipTransform.GetLocation(),OurCharacter->GetHitTarget() , FColor::Blue);
 	}
-	
+	bUseFABRIK = OurCharacter->GetCombatState() != ECombatState::ECS_Reloading;
 }

@@ -632,6 +632,12 @@ FVector_NetQuantize ABlasterCharacter::GetHitTarget()
 	return Combat->HitTarget;
 }
 
+ECombatState ABlasterCharacter::GetCombatState() const
+{
+	if(!Combat)return  ECombatState::ECS_MAX;
+	return Combat->CombatState;
+}
+
 
 
 

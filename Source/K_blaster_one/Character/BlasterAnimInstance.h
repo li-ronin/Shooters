@@ -76,4 +76,6 @@ private:
 	UPROPERTY(BlueprintReadOnly, Category = K_Combat, meta = (AllowPrivateAccess="true"))
 	bool bElimmed;
 	
+	UPROPERTY(BlueprintReadOnly, Category = K_Combat, meta = (AllowPrivateAccess="true"))
+	bool bUseFABRIK;
 };

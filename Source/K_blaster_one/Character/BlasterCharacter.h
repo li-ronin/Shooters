@@ -29,6 +29,8 @@ public:
 	
 	void PlayFireMontage(bool bAiming);
 	
+	void PlayReloadMontage();
+	
 	void PlayElimMontage();
 	
 	// UFUNCTION(NetMulticast, Unreliable)
@@ -56,8 +58,9 @@ protected:
 	void AimButtonReleased();
 	void FireButtonPressed();
 	void FireButtonReleased();
+	void ReloadButtonPressed();
+	
 	void CalculateAO_Pitch();
-
 	void AimOffset(float DeltaTime);
 	void SimProxyTurn();
 	void PlayHitReactMontage();
@@ -105,6 +108,9 @@ private:
 
 	UPROPERTY(EditAnywhere, Category = K_Combat)
 	UAnimMontage* ElimMontage;
+
+	UPROPERTY(EditAnywhere, Category = K_Combat)
+	UAnimMontage* ReloadMontage;
 	
 	void HideCharacter();
 

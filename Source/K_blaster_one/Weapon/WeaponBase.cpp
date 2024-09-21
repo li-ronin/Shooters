@@ -126,7 +126,7 @@ void AWeaponBase::OnRep_WeaponState() // 客户端执行
 
 void AWeaponBase::SpendRound()
 {
-	--Ammo;
+	Ammo = FMath::Clamp(Ammo-1, 0, MagCapacity);
 	SetHUDAmmo();
 }
 
@@ -203,4 +203,9 @@ void AWeaponBase::SetHUDAmmo()
 			BlasterOwnerController->SetHUDWeaponAmmo(Ammo);
 		}
 	}
+}
+
+bool AWeaponBase::IsAmmoEmpty()
+{
+	return Ammo <= 0;
 }

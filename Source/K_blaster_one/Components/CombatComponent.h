@@ -5,6 +5,8 @@
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
 #include "K_blaster_one/HUD/BlasterHUD.h"
+#include "K_blaster_one/Weapon/WeaponType.h"
+#include "K_blaster_one/BlasterType/CombatState.h"
 #include "CombatComponent.generated.h"
 #define STEP 80000.f
 
@@ -23,7 +25,8 @@ public:
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;	// 在该函数中注册要复制的变量
 	
 	void EquipWeapon(class AWeaponBase* WeaponToEquipped);
-	
+
+	void Reload();
 protected:
 	virtual void BeginPlay() override;
 
@@ -44,6 +47,9 @@ protected:
 	void TraceUnderCrosshairs(FHitResult& TraceHitResult);
 
 	void SetHUDCrosshairs(float DeltaTime);
+
+	UFUNCTION(Server, Reliable)
+	void ServerReload();
 private:
 	UPROPERTY()
 	class ABlasterCharacter* Character;
@@ -91,6 +97,23 @@ private:
 	float ZoomInterpSpeed = 20.f;
 	
 	void InterpFOV(float DeltaTime);
+
+	bool CanFire();
+	
+	UPROPERTY(ReplicatedUsing = OnRep_CarriedAmmo)
+	int32 CarriedAmmo;
+	
+	UFUNCTION()
+	void OnRep_CarriedAmmo();
+	
+	TMap<EWeaponType, int32> CarriedAmmoMap;
+	
+	UPROPERTY(EditAnywhere)
+	int32 StartingARAmmo = 30;
+	
+	void InitializeCarriedAmmo();
+
+	ECombatState CombatState;
 public:	
 
 		

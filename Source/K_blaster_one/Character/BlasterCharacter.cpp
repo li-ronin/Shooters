@@ -18,6 +18,7 @@
 #include "Particles/ParticleSystemComponent.h"
 #include "Sound/SoundCue.h"
 #include "K_blaster_one/PlayerState/BlasterPlayerState.h"
+#include "K_blaster_one/Weapon/WeaponType.h"
 
 ABlasterCharacter::ABlasterCharacter()
 {
@@ -139,6 +140,7 @@ void ABlasterCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 	PlayerInputComponent->BindAction("Aim", IE_Released, this, &ThisClass::AimButtonReleased);
 	PlayerInputComponent->BindAction("Fire", IE_Pressed, this, &ThisClass::FireButtonPressed);
 	PlayerInputComponent->BindAction("Fire", IE_Released, this, &ThisClass::FireButtonReleased);
+	PlayerInputComponent->BindAction("Reload", IE_Pressed, this, &ThisClass::ReloadButtonPressed);
 }
 
 void ABlasterCharacter::OnRep_ReplicatedMovement()
@@ -248,6 +250,25 @@ void ABlasterCharacter::PlayFireMontage(bool bAiming)
 	{
 		OurAnimInstance->Montage_Play(FireMontage);
 		FName SectionName = bAiming ? TEXT("RifleAim") : TEXT("RifleHip");
+		OurAnimInstance->Montage_JumpToSection(SectionName);
+	}
+}
+
+void ABlasterCharacter::PlayReloadMontage()
+{
+	if(!Combat || !Combat->EquippedWeapon)return;
+	
+	UAnimInstance* OurAnimInstance = GetMesh()->GetAnimInstance();
+	if(OurAnimInstance && ReloadMontage)
+	{
+		OurAnimInstance->Montage_Play(ReloadMontage);
+		FName SectionName ;
+		switch (Combat->EquippedWeapon->GetWeaponType())
+		{
+		case EWeaponType::EWT_AssaultRifle:
+			SectionName = FName("Rifle");
+			break;
+		}
 		OurAnimInstance->Montage_JumpToSection(SectionName);
 	}
 }
@@ -392,7 +413,6 @@ void ABlasterCharacter::CrouchButtonPressed()
 	{
 		Crouch();
 	}
-	
 }
 
 void ABlasterCharacter::AimButtonPressed()
@@ -424,6 +444,14 @@ void ABlasterCharacter::FireButtonReleased()
 	if(Combat && Combat->EquippedWeapon)
 	{
 		Combat->FireButtonPressed(false);
+	}
+}
+
+void ABlasterCharacter::ReloadButtonPressed()
+{
+	if(Combat)
+	{
+		Combat->Reload();
 	}
 }
 

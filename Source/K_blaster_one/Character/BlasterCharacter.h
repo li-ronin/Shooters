@@ -44,6 +44,9 @@ public:
 	
 	UFUNCTION(NetMulticast, Reliable)
 	void MulticastElim();
+
+	UPROPERTY(Replicated)
+	bool bDisableGameplay = false;
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
@@ -60,7 +63,7 @@ protected:
 	void FireButtonPressed();
 	void FireButtonReleased();
 	void ReloadButtonPressed();
-	
+	void QuitGameButtonPressed();
 	void CalculateAO_Pitch();
 	void AimOffset(float DeltaTime);
 	void SimProxyTurn();
@@ -69,6 +72,7 @@ protected:
 	void ReceiveDamage(AActor* DamageActor, float Damage, const UDamageType* DamageType, class AController* InstigatorController, AActor* DamageCauser);
 	void UpdateHealth();
 	void PollInit();
+	void RotateInPlace(float DeltaTime);
 private:
 	UPROPERTY(VisibleAnywhere, Category = K_Camera)
 	class USpringArmComponent* CameraBoom;
@@ -138,6 +142,7 @@ private:
 	UFUNCTION()
 	void OnRep_Health();
 
+	UPROPERTY()
 	class ABlasterPlayerController* BlasterPlayerController;
 	
 	bool bElimmed = false;
@@ -202,5 +207,7 @@ public:
 	FORCEINLINE float GetHealth() const {return Health;}
 	FORCEINLINE float GetMaxHealth() const {return MaxHealth;}
 	ECombatState GetCombatState() const;
+	FORCEINLINE UCombatComponent* GetCombat() const {return Combat;};
+	FORCEINLINE bool GetDisableGameplay() const {return bDisableGameplay;};
 };
 

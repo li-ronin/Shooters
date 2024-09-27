@@ -31,10 +31,17 @@ void ABlasterGameMode::Tick(float DeltaSeconds)
 		}
 	}else if(MatchState == MatchState::InProgress)
 	{
-		CountdownTime = WarmupTime + MatchTime - GetWorld()->GetTimeSeconds() + LevelStartingTime;
+		CountdownTime = MatchTime + WarmupTime - GetWorld()->GetTimeSeconds() + LevelStartingTime;
 		if(CountdownTime <= 0.f)
 		{
 			SetMatchState(MatchState::CoolDown);
+		}
+	}else if(MatchState == MatchState::CoolDown)
+	{
+		CountdownTime = CoolDownTime + MatchTime + WarmupTime - GetWorld()->GetTimeSeconds() + LevelStartingTime;
+		if(CountdownTime <= 0.f)
+		{
+			RestartGame();
 		}
 	}
 }

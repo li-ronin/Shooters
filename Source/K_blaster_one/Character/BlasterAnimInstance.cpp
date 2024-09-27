@@ -89,5 +89,5 @@ void UBlasterAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 		// DrawDebugLine(GetWorld(), MuzzleTipTransform.GetLocation(),OurCharacter->GetHitTarget() , FColor::Blue);
 	}
 	bUseFABRIK = OurCharacter->GetCombatState() != ECombatState::ECS_Reloading;
-	bUseAimOffset = OurCharacter->GetCombatState() != ECombatState::ECS_Reloading;
+	bUseAimOffset = OurCharacter->GetCombatState() != ECombatState::ECS_Reloading && !OurCharacter->GetDisableGameplay();
 }

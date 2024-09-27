@@ -78,4 +78,7 @@ private:
 	
 	UPROPERTY(BlueprintReadOnly, Category = K_Combat, meta = (AllowPrivateAccess="true"))
 	bool bUseFABRIK;
+	
+	UPROPERTY(BlueprintReadOnly, Category = K_Combat, meta = (AllowPrivateAccess="true"))
+	bool bUseAimOffset;
 };

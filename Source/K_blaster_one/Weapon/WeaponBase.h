@@ -38,7 +38,8 @@ public:
 
 	virtual void Dropped();
 
-	
+	UPROPERTY(EditAnywhere)
+	class USoundCue* EquipSound;
 protected:
 	virtual void BeginPlay() override;
 
@@ -136,4 +137,6 @@ public:
 	bool IsAmmoEmpty();
 	
 	FORCEINLINE EWeaponType GetWeaponType() const {return WeaponType;}
+
+	void AddAmmo();
 };

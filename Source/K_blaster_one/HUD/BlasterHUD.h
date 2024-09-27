@@ -28,14 +28,28 @@ class K_BLASTER_ONE_API ABlasterHUD : public AHUD
 public:
 	void DrawHUD() override;
 
+	// 等候游戏开始界面
+	UPROPERTY(EditAnywhere, Category = "Announcement")
+	TSubclassOf<class UUserWidget> AnnouncementClass;
+
+	void AddAnnouncement();
+	
+	UPROPERTY()
+	class UAnnouncement* Announcement;
+	
+	// 游戏界面 
 	UPROPERTY(EditAnywhere, Category = "Player Stats")
 	TSubclassOf<class UUserWidget> CharacterOverlayClass;
 	
+	void AddCharacterOverlay();
+
+	UPROPERTY()
 	class UCharacterOverlay* CharacterOverlay;
+
 	
 protected:
 	virtual void BeginPlay() override;
-	void AddCharacterOverlay();
+	
 private:
 	FHUDPackage HUDPackage;
 

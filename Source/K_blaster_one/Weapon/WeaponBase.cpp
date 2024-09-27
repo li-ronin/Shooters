@@ -130,6 +130,12 @@ void AWeaponBase::SpendRound()
 	SetHUDAmmo();
 }
 
+void AWeaponBase::AddAmmo()
+{
+	Ammo = (Ammo+10 > MagCapacity) ? MagCapacity : Ammo+10;
+	SetHUDAmmo();
+}
+
 void AWeaponBase::OnRep_Ammo()
 {
 	SetHUDAmmo();
@@ -155,8 +161,6 @@ void AWeaponBase::ShowPickupWidget(bool bShowWidget)
 		PickupWidget->SetVisibility(bShowWidget);
 	}
 }
-
-
 
 void AWeaponBase::Fire(const FVector& HitTarget)
 {

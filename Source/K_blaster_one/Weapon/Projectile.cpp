@@ -6,7 +6,6 @@
 #include "Kismet/GameplayStatics.h"
 #include "Particles/ParticleSystem.h"
 #include "Sound/SoundCue.h"
-#include "K_blaster_one/Character/BlasterCharacter.h"
 #include "K_blaster_one/K_blaster_one.h"
 
 AProjectile::AProjectile()

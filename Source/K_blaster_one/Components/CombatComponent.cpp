@@ -9,6 +9,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "Net/UnrealNetwork.h"
 #include "K_blaster_one/PlayerController/BlasterPlayerController.h"
+#include "Sound/SoundCue.h"
 
 
 UCombatComponent::UCombatComponent()
@@ -129,6 +130,14 @@ void UCombatComponent::OnRep_EquippedWeapon()	// 复制给客户端时的处理
 		//  这是客户端的Character
 		Character->bUseControllerRotationYaw = true;
 		Character->GetCharacterMovement()->bOrientRotationToMovement = false;	// 拿到武器之后让角色朝向镜头旋转方向, 而不是移动方向
+		if(EquippedWeapon->EquipSound)
+		{
+			UGameplayStatics::PlaySoundAtLocation(
+				this,
+				EquippedWeapon->EquipSound,
+				Character->GetActorLocation()
+				);
+		}
 	}
 }
 
@@ -218,7 +227,7 @@ void UCombatComponent::ServerFire_Implementation(const FVector_NetQuantize& Trac
 void UCombatComponent::MulticastFire_Implementation(const FVector_NetQuantize& TraceHitTarget)
 {
 	if(!EquippedWeapon)return;
-	if(Character)
+	if(Character && CombatState == ECombatState::ECS_Unoccupied)
 	{
 		Character->PlayFireMontage(bIsAiming);
 		EquippedWeapon->Fire(TraceHitTarget);
@@ -256,6 +265,14 @@ void UCombatComponent::EquipWeapon(AWeaponBase* WeaponToEquipped)
 	{
 		Controller->SetHUDCarriedAmmo(CarriedAmmo);
 	}
+	if(EquippedWeapon->EquipSound)	// 仅在服务端执行
+	{
+		UGameplayStatics::PlaySoundAtLocation(
+			this,
+			EquippedWeapon->EquipSound,
+			Character->GetActorLocation()
+			);
+	}
 	Character->bUseControllerRotationYaw = true;
 	Character->GetCharacterMovement()->bOrientRotationToMovement = false;	// 拿到武器之后让角色朝向镜头旋转方向, 而不是移动方向
 }
@@ -274,6 +291,10 @@ void UCombatComponent::FinishReloading()
 	if(Character->HasAuthority())
 	{
 		CombatState = ECombatState::ECS_Unoccupied;	
+	}
+	if(EquippedWeapon)
+	{
+		EquippedWeapon->AddAmmo();
 	}
 }
 
@@ -299,12 +320,10 @@ void UCombatComponent::HandleReload()
 	Character->PlayReloadMontage();
 }
 
-
-
 bool UCombatComponent::CanFire()
 {
 	if(EquippedWeapon == nullptr) return false;
-	return !EquippedWeapon->IsAmmoEmpty();
+	return !EquippedWeapon->IsAmmoEmpty() && CombatState == ECombatState::ECS_Unoccupied;
 }
 
 void UCombatComponent::OnRep_CarriedAmmo()

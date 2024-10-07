@@ -10,15 +10,15 @@
 #include "Net/UnrealNetwork.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "BlasterAnimInstance.h"
-#include "K_blaster_one/PlayerController/BlasterPlayerController.h"
 #include "K_blaster_one/K_blaster_one.h"
-#include "K_blaster_one/GameMode/BlasterGameMode.h"
 #include "TimerManager.h"
 #include "Kismet/GameplayStatics.h"
 #include "Particles/ParticleSystemComponent.h"
 #include "Sound/SoundCue.h"
-#include "K_blaster_one/PlayerState/BlasterPlayerState.h"
 #include "K_blaster_one/Weapon/WeaponType.h"
+#include "K_blaster_one/PlayerController/BlasterPlayerController.h"
+#include "K_blaster_one/GameMode/BlasterGameMode.h"
+#include "K_blaster_one/PlayerState/BlasterPlayerState.h"
 
 ABlasterCharacter::ABlasterCharacter()
 {
@@ -103,7 +103,9 @@ void ABlasterCharacter::Destroyed()
 	{
 		ElimBotComponent->DestroyComponent();
 	}
-	if(Combat && Combat->EquippedWeapon)
+	ABlasterGameMode* BlasterGameMode = Cast<ABlasterGameMode>(UGameplayStatics::GetGameMode(this));
+	bool bMatchNotInProgress = BlasterGameMode && BlasterGameMode->GetMatchState() != MatchState::InProgress;
+	if(Combat && Combat->EquippedWeapon && bMatchNotInProgress)
 	{
 		Combat->EquippedWeapon->Destroy();
 	}
@@ -205,6 +207,10 @@ void ABlasterCharacter::MulticastElim_Implementation()
 	GetCharacterMovement()->DisableMovement();
 	GetCharacterMovement()->StopMovementImmediately();
 	bDisableGameplay = true;
+	if(Combat)
+	{
+		Combat->FireButtonPressed(false);
+	}
 	// if(BlasterPlayerController)
 	// {
 	// 	DisableInput(BlasterPlayerController);

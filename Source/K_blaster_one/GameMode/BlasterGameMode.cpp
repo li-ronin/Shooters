@@ -7,6 +7,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "K_blaster_one/PlayerController/BlasterPlayerController.h"
 #include "K_blaster_one/Character/BlasterCharacter.h"
+#include "K_blaster_one/GameState/BlasterGameState.h"
 #include "K_blaster_one/PlayerState/BlasterPlayerState.h"
 
 namespace MatchState
@@ -70,11 +71,12 @@ void ABlasterGameMode::PlayerEliminated(ABlasterCharacter* EliminatedCharacter,
 {
 	ABlasterPlayerState* AttackerPlayerState = AttackerController ? Cast<ABlasterPlayerState>(AttackerController->PlayerState) : nullptr;
 	ABlasterPlayerState* VictimPlayerState = VictimController ? Cast<ABlasterPlayerState>(VictimController->PlayerState) : nullptr;
-	
-	if(AttackerPlayerState && VictimPlayerState && AttackerPlayerState!=VictimPlayerState)
+	ABlasterGameState* BlasterGameState = GetGameState<ABlasterGameState>();
+	if(AttackerPlayerState && VictimPlayerState && AttackerPlayerState!=VictimPlayerState && BlasterGameState)
 	{
 		// UE_LOG(LogTemp, Warning, TEXT("+1!"))
 		AttackerPlayerState->AddToScore(1.f);
+		BlasterGameState->UpdateTopScore(AttackerPlayerState);
 		VictimPlayerState->AddToDefeat(1);
 	}
 	// GameMode Only On the Server
